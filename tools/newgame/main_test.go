@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -276,6 +277,14 @@ func TestRestoresProjectWhenValidationFails(t *testing.T) {
 	countFile := filepath.Join(t.TempDir(), "go-count")
 	fakeGo := filepath.Join(fakeBin, "go")
 	script := "#!/bin/sh\ncount=0\nif [ -f " + countFile + " ]; then count=$(cat " + countFile + "); fi\ncount=$((count + 1))\necho \"$count\" > " + countFile + "\nif [ \"$count\" -eq 3 ]; then exit 17; fi\nexit 0\n"
+	if runtime.GOOS == "windows" {
+		fakeGo += ".bat"
+		script = "@echo off\r\nset count=0\r\n" +
+			"if exist \"" + countFile + "\" set /p count=<\"" + countFile + "\"\r\n" +
+			"set /a count+=1\r\n" +
+			">\"" + countFile + "\" echo %count%\r\n" +
+			"if %count%==3 exit /b 17\r\nexit /b 0\r\n"
+	}
 	if err := os.WriteFile(fakeGo, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
