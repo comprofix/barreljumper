@@ -409,9 +409,9 @@ game's own in its place and set `icon.Placeholder` to false. Until then
   - Record each fact in DESIGN.md, tagged **[ref]**, before using it.
   - Never copy or translate its code, sprites, fonts, sound tables or text.
   - Write Go code from DESIGN.md, not from the reference.
-  - Clone reference repos into the scratchpad, never into this repo.
+  - Clone reference repos into a temporary folder outside this repo, never into this repo.
 - Reference videos and screenshots go in `ref/`, which is git-ignored.
-  - Extract frames into the scratchpad.
+  - Extract frames into a temporary folder outside this repo.
   - Use them for layout, behaviour and timing only. Never trace sprites from
     them.
 
