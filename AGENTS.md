@@ -337,8 +337,8 @@ sprite (below).
   left-facing art.
 - After changing a sprite, run `go generate ./assets`. The regenerated
   `assets/gen/*` is part of the change.
-- Check new art by eye on the preview sheet before using it. Previews go in the
-  scratchpad or `/preview/`, never in `assets/gen`.
+- Check new art by eye on the preview sheet before using it. Never write previews
+  to assets/gen.
 - Effects (lighting, particles, weather) are drawn by code at runtime, not
   stored as sprites.
 - The game only loads PNG and JSON, so a sprite drawn by hand can replace a
@@ -356,8 +356,8 @@ sprite (below).
 - Text is Go Mono Bold (`gfx.SmoothFonts`), monospaced like the bitmap
   fonts, so menus line up in character cells.
 - Sprites still work, for anything better drawn as an image.
-- Check new art by eye from a screenshot before using it. Preview programs
-  go in the scratchpad, never in the repo.
+- Check new art by eye from a screenshot before using it. Do not add preview
+  programs to the game's source.
 
 ### Both looks
 
