@@ -45,3 +45,22 @@ func TestGirderContactBoundaries(t *testing.T) {
 		}
 	}
 }
+
+func TestGirderLandingY(t *testing.T) {
+	cell := girder{20, 40, 161}
+	for _, tc := range []struct {
+		x, y, offset, wantY int
+		wantContact         bool
+	}{
+		{20, 145, 16, 144, true},
+		{20, 147, 16, 144, true},
+		{20, 149, 12, 148, true},
+		{20, 148, 16, 148, false},
+		{36, 145, 16, 145, false},
+	} {
+		y, contact := cell.landingY(tc.x, tc.y, tc.offset)
+		if y != tc.wantY || contact != tc.wantContact {
+			t.Errorf("landingY(%d, %d, %d) = (%d, %v), want (%d, %v)", tc.x, tc.y, tc.offset, y, contact, tc.wantY, tc.wantContact)
+		}
+	}
+}

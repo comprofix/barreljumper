@@ -36,3 +36,11 @@ func (g girder) supports(playerX, footY int) bool {
 	return g.left < playerX+13 && playerX+5 <= g.right &&
 		g.y <= footY && footY <= g.y+2
 }
+
+// landingY returns the snapped origin when the active foot contacts this girder.
+func (g girder) landingY(playerX, playerY, footOffset int) (int, bool) {
+	if !g.supports(playerX, playerY+footOffset) {
+		return playerY, false
+	}
+	return g.y - footOffset - 1, true
+}
