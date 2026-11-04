@@ -22,3 +22,18 @@ func TestWalkingFallLanding(t *testing.T) {
 		t.Fatal("landing retained the previous fall count")
 	}
 }
+
+func TestWalkingFallGirderContact(t *testing.T) {
+	cell := girder{20, 40, 161}
+	var fall walkingFall
+	y := 128
+	for range 17 {
+		y = fall.advance(y)
+	}
+	if got, contact, fatal := fall.landOn(cell, 36, y, 16); got != 145 || contact || fatal {
+		t.Fatalf("miss = (%d, %v, %v), want (145, false, false)", got, contact, fatal)
+	}
+	if got, contact, fatal := fall.landOn(cell, 20, y, 16); got != 144 || !contact || !fatal {
+		t.Fatalf("landing = (%d, %v, %v), want (144, true, true)", got, contact, fatal)
+	}
+}

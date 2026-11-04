@@ -17,3 +17,13 @@ func (f *walkingFall) land() (fatal bool) {
 	f.distance = 0
 	return fatal
 }
+
+// landOn checks a candidate girder at the current position. A miss preserves
+// the fall count so the next contact can still apply the fatal-fall rule.
+func (f *walkingFall) landOn(g girder, x, y, footOffset int) (landingY int, contact, fatal bool) {
+	landingY, contact = g.landingY(x, y, footOffset)
+	if contact {
+		fatal = f.land()
+	}
+	return
+}
