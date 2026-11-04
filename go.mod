@@ -1,4 +1,4 @@
-module github.com/comprofix/gameskeleton
+module github.com/comprofix/barreljumper
 
 go 1.27.0
 

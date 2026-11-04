@@ -13,4 +13,4 @@ here, not in `.github/workflows/`, so the skeleton's own tags build nothing.
   adds each version's section to `CHANGELOG.md` from the Conventional Commits
   since the last tag.
 
-`tools/newgame` renames `gameskeleton` in them along with everything else.
+`tools/newgame` renames `barreljumper` in them along with everything else.

@@ -1,4 +1,4 @@
-// Command gameskeleton starts the game: it loads the saved files, opens the
+// Command barreljumper starts the game: it loads the saved files, opens the
 // window and runs the scenes.
 package main
 
@@ -10,11 +10,11 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
-	"github.com/comprofix/gameskeleton/internal/audio"
-	"github.com/comprofix/gameskeleton/internal/config"
-	"github.com/comprofix/gameskeleton/internal/game"
-	"github.com/comprofix/gameskeleton/internal/icon"
-	"github.com/comprofix/gameskeleton/internal/score"
+	"github.com/comprofix/barreljumper/internal/audio"
+	"github.com/comprofix/barreljumper/internal/config"
+	"github.com/comprofix/barreljumper/internal/game"
+	"github.com/comprofix/barreljumper/internal/icon"
+	"github.com/comprofix/barreljumper/internal/score"
 )
 
 func main() {

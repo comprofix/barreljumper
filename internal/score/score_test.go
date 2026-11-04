@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/comprofix/gameskeleton/internal/config"
+	"github.com/comprofix/barreljumper/internal/config"
 )
 
 var skills = []config.Skill{{ID: "easy"}, {ID: "hard"}}

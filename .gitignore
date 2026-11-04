@@ -1,3 +1,5 @@
+AGENTS.md
+CLAUDE.md
 # Personal working documents and agent-specific local configuration (not tracked).
 # AGENTS.md is the canonical, shared instruction file; CLAUDE.md is its compatibility entry point.
 CLAUDE.local.md

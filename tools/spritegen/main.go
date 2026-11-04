@@ -19,10 +19,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/comprofix/gameskeleton/internal/bitfont"
-	"github.com/comprofix/gameskeleton/internal/config"
-	"github.com/comprofix/gameskeleton/internal/gfx/palettes"
-	"github.com/comprofix/gameskeleton/internal/spritegrid"
+	"github.com/comprofix/barreljumper/internal/bitfont"
+	"github.com/comprofix/barreljumper/internal/config"
+	"github.com/comprofix/barreljumper/internal/gfx/palettes"
+	"github.com/comprofix/barreljumper/internal/spritegrid"
 )
 
 type options struct {
