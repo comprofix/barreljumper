@@ -29,26 +29,27 @@ const (
 // player is one player's place in the game. Each keeps their own score,
 // lives and schedule position (DESIGN section 4, M4 session and turns).
 type player struct {
-	score    int
-	reserves int
-	level    int
-	index    int // position in the level's schedule row
-	nextLife int
+	skill     config.Skill
+	skillWord int
+	score     int
+	reserves  int
+	level     int
+	index     int // position in the level's schedule row
+	nextLife  int
 }
 
 // Play is one Classic game, following the Classic schedule (DESIGN
 // section 4, Screen progression).
 type Play struct {
-	*player   // the current player
-	players   []player
-	current   int
-	skill     config.Skill
-	skillWord int
-	rng       random
-	updates   int
-	stage     *stage
-	phase     int
-	timer     int
+	*player // the current player
+	players []player
+	current int
+	chosen  config.Skill // the skill the game was started with, for a restart
+	rng     random
+	updates int
+	stage   *stage
+	phase   int
+	timer   int
 	// The nominal PIT clock, sampled each 60 Hz frame.
 	clockPhase int
 	counter    uint16
@@ -60,18 +61,24 @@ func NewPlay(ctx *scene.Context, skill config.Skill) *Play {
 	if ctx != nil && ctx.RNG != nil {
 		seed = ctx.RNG.Uint32()
 	}
-	p := &Play{skill: skill, skillWord: skillWord(skill), rng: random{seed}}
-	count := 1
-	if ctx != nil && ctx.Players == 2 {
-		count = 2
-	}
-	for range count {
-		pl := player{reserves: 3, nextLife: 7000}
-		if p.skillWord == easySkill {
-			pl.reserves = 5
+	p := &Play{chosen: skill, rng: random{seed}}
+	// The game menu's setup: the player count, the starting level and the
+	// other players' skills. The -level flag overrides the level, for tests.
+	skills, level := []config.Skill{skill}, 1
+	if ctx != nil && (ctx.MaxPlayers > 1 || ctx.StartLevels > 1) {
+		g := ctx.Game()
+		level = g.Level
+		for _, id := range g.Skills[1:g.Players] {
+			skills = append(skills, *config.SkillNamed(id))
 		}
-		if ctx != nil && ctx.StartLevel > 1 {
-			pl.level = ctx.StartLevel - 1
+	}
+	if ctx != nil && ctx.StartLevel > 1 {
+		level = ctx.StartLevel
+	}
+	for _, sk := range skills {
+		pl := player{skill: sk, skillWord: skillWord(sk), reserves: 3, nextLife: 7000, level: level - 1}
+		if pl.skillWord == easySkill {
+			pl.reserves = 5
 		}
 		if ctx != nil && ctx.StartScreen > 1 {
 			// Past the row's end, the last screen.
@@ -127,7 +134,7 @@ func (p *Play) Update(ctx *scene.Context) error {
 		ctx.Switch(scene.NewMainMenu())
 		return nil
 	case in.JustPressed(input.Restart):
-		ctx.Switch(NewPlay(ctx, p.skill))
+		ctx.Switch(NewPlay(ctx, p.chosen))
 		return nil
 	}
 	axis := func(negative, positive input.Action) int {
@@ -145,11 +152,11 @@ func (p *Play) Update(ctx *scene.Context) error {
 		Jump:       in.Held(input.Confirm),
 	})
 	if p.phase == gameOver && p.timer >= gameOverTicks {
-		scores := make([]int, len(p.players))
+		results := make([]scene.Result, len(p.players))
 		for i, pl := range p.players {
-			scores[i] = pl.score
+			results[i] = scene.Result{Skill: pl.skill, Points: pl.score}
 		}
-		ctx.Switch(scene.AfterGame(ctx, p.skill, scores...))
+		ctx.Switch(scene.AfterGame(ctx, results...))
 	}
 	return nil
 }

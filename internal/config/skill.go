@@ -15,3 +15,16 @@ var Skills = []Skill{
 	{ID: "arcade", Name: "Arcade", Desc: "Three lives, as the arcade plays."},
 	{ID: "hard", Name: "Hard", Desc: "Three lives and faster throws."},
 }
+
+// SkillNamed returns the skill with ID id, or nil.
+func SkillNamed(id string) *Skill {
+	for i := range Skills {
+		if Skills[i].ID == id {
+			return &Skills[i]
+		}
+	}
+	return nil
+}
+
+// DefaultSkill is the skill a new game setup starts with: Arcade.
+func DefaultSkill() Skill { return *SkillNamed("arcade") }

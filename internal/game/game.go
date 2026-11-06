@@ -43,10 +43,11 @@ type Content struct {
 	// NativePlay says the play and demo scenes draw in either look (see
 	// scene.Context).
 	NativePlay bool
-	// MaxPlayers is how many players can take turns (see scene.Context).
-	MaxPlayers int
-	Sounds     audio.Bank
-	Sheets     []string
+	// MaxPlayers and StartLevels are how many players can take turns and
+	// how many starting levels the game menu offers (see scene.Context).
+	MaxPlayers, StartLevels int
+	Sounds                  audio.Bank
+	Sheets                  []string
 	// The game's title and high score tunes, if it has its own (see
 	// scene.Context).
 	TitleTune, ScoresTune *audio.Tune
@@ -99,20 +100,21 @@ func New(seed uint64, saved Saved, synth *audio.Synth) (*Game, error) {
 		settings: saved.Settings,
 	}
 	g.ctx = &scene.Context{
-		Input:      input.New(&input.Ebiten{}),
-		RNG:        scene.NewRNG(seed),
-		Looks:      g.looks,
-		PixelFonts: bitmap,
-		Sheets:     sheets,
-		NewPlay:    content.NewPlay,
-		NewDemo:    content.NewDemo,
-		NativePlay: content.NativePlay,
-		MaxPlayers: content.MaxPlayers,
-		Audio:      synth,
-		Sounds:     audio.Join(scene.Sounds, content.Sounds),
-		TitleTune:  content.TitleTune,
-		ScoresTune: content.ScoresTune,
-		Scores:     saved.Scores,
+		Input:       input.New(&input.Ebiten{}),
+		RNG:         scene.NewRNG(seed),
+		Looks:       g.looks,
+		PixelFonts:  bitmap,
+		Sheets:      sheets,
+		NewPlay:     content.NewPlay,
+		NewDemo:     content.NewDemo,
+		NativePlay:  content.NativePlay,
+		MaxPlayers:  content.MaxPlayers,
+		StartLevels: content.StartLevels,
+		Audio:       synth,
+		Sounds:      audio.Join(scene.Sounds, content.Sounds),
+		TitleTune:   content.TitleTune,
+		ScoresTune:  content.ScoresTune,
+		Scores:      saved.Scores,
 	}
 	g.ctx.Settings = &g.settings
 	if g.ctx.Scores == nil {

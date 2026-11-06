@@ -8,7 +8,8 @@ import (
 
 func twoPlayers(t *testing.T) *Play {
 	h := scenetest.New(t, 1)
-	h.Ctx.Players = 2
+	h.Ctx.MaxPlayers, h.Ctx.StartLevels = 2, 8
+	h.Ctx.Settings.Game.Players = 2
 	return NewPlay(h.Ctx, skillByID(t, "arcade"))
 }
 
@@ -88,5 +89,30 @@ func TestExtraLifeOnTheDeathUpdate(t *testing.T) {
 	dieNow(t, p)
 	if p.phase != playing || p.reserves != 0 {
 		t.Errorf("phase %d, reserves %d: the 7000 life should give one more turn", p.phase, p.reserves)
+	}
+}
+
+func TestGameSetupSkillsAndStartingLevel(t *testing.T) {
+	h := scenetest.New(t, 1)
+	h.Ctx.MaxPlayers, h.Ctx.StartLevels = 2, 8
+	h.Ctx.Settings.Game.Players, h.Ctx.Settings.Game.Level = 2, 3
+	h.Ctx.Settings.Game.Skills = [2]string{"easy", "hard"}
+	p := NewPlay(h.Ctx, skillByID(t, "easy"))
+	p1, p2 := p.players[0], p.players[1]
+	if p1.skillWord != easySkill || p1.reserves != 4 || p1.level != 2 {
+		t.Errorf("player 1: %+v", p1)
+	}
+	if p2.skillWord != hardSkill || p2.reserves != 3 || p2.level != 2 {
+		t.Errorf("player 2: %+v", p2)
+	}
+	if p.stage.skill != easySkill {
+		t.Error("player 1's stage is not at their skill")
+	}
+	dieNow(t, p)
+	if p.current != 1 || p.stage.skill != hardSkill || p.stage.level != 2 {
+		t.Errorf("player 2's stage: skill %d, level %d", p.stage.skill, p.stage.level+1)
+	}
+	if h.Ctx.Testing() {
+		t.Error("a menu starting level made a test game")
 	}
 }

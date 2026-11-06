@@ -75,7 +75,7 @@ type MainMenu struct {
 // The shared scenes draw at the screen's own size in either look.
 func (*Title) Native()          {}
 func (*MainMenu) Native()       {}
-func (*PlayersSelect) Native()  {}
+func (*GameMenu) Native()       {}
 func (*SkillSelect) Native()    {}
 func (*Options) Native()        {}
 func (*Pause) Native()          {}
@@ -112,37 +112,32 @@ func (s *MainMenu) Draw(ctx *Context, dst *ebiten.Image) {
 	drawMenuScreen(ctx, dst, config.Title, &s.menu, "Enter: choose   Esc: back")
 }
 
-// NewPlayFlow is the first menu of starting a game: the Players menu when
-// the game supports more than one, otherwise the skill menu.
+// NewPlayFlow is the first menu of starting a game: the game menu when the
+// game offers players or starting levels to choose, otherwise the skill
+// menu.
 func NewPlayFlow(ctx *Context) Scene {
-	if ctx.MaxPlayers > 1 {
-		return NewPlayersSelect()
+	if ctx.MaxPlayers > 1 || ctx.StartLevels > 1 {
+		return NewGameMenu()
 	}
-	ctx.Players = 1
 	return NewSkillSelect()
 }
 
-// PlayersSelect chooses how many players take turns, then the skill.
-type PlayersSelect struct {
-	menu ui.Menu
+// GameMenu sets up a game as the reference's game menu does: the player
+// count, the starting level and each player's skill, then Start game. The
+// choices are saved in the settings.
+type GameMenu struct {
+	menu  ui.Menu
+	hints []func() string // each item's line under the menu, or nil
 }
 
-// NewPlayersSelect returns the Players menu.
-func NewPlayersSelect() *PlayersSelect { return &PlayersSelect{} }
+// NewGameMenu returns the game menu.
+func NewGameMenu() *GameMenu { return &GameMenu{} }
 
 // Update implements Scene.
-func (s *PlayersSelect) Update(ctx *Context) error {
+func (s *GameMenu) Update(ctx *Context) error {
 	if s.menu.Items == nil {
-		for n := 1; n <= ctx.MaxPlayers; n++ {
-			label := "1 Player"
-			if n > 1 {
-				label = fmt.Sprint(n, " Players")
-			}
-			s.menu.Items = append(s.menu.Items, ui.Item{Label: label, Confirm: func() {
-				ctx.Players = n
-				ctx.Switch(NewSkillSelect())
-			}})
-		}
+		s.menu.Items, s.hints = s.items(ctx)
+		s.menu.Cursor = len(s.menu.Items) - 1 // Start game
 		menuSounds(ctx, &s.menu)
 	}
 	if ctx.Input.JustPressed(input.Back) {
@@ -153,9 +148,67 @@ func (s *PlayersSelect) Update(ctx *Context) error {
 	return nil
 }
 
+// change applies f to the saved setup and records the change.
+func change(ctx *Context, f func(g *config.GameSetup)) {
+	g := ctx.Game()
+	f(&g)
+	ctx.Settings.Game = g.Clamped(ctx.MaxPlayers, ctx.StartLevels)
+	ctx.SettingsChanged()
+}
+
+func (s *GameMenu) items(ctx *Context) ([]ui.Item, []func() string) {
+	// step makes an item whose value steps with Left and Right, wrapping,
+	// and forward on Confirm or a click.
+	step := func(label string, value func() string, by func(g *config.GameSetup, d int)) ui.Item {
+		adjust := func(d int) { change(ctx, func(g *config.GameSetup) { by(g, d) }) }
+		return ui.Item{Label: label, Value: value, Adjust: adjust, Confirm: func() { adjust(1) }}
+	}
+	wrap := func(v, d, n int) int { return ((v-1+d)%n+n)%n + 1 } // 1..n
+	var items []ui.Item
+	var hints []func() string
+	if ctx.MaxPlayers > 1 {
+		items = append(items, step("Players", func() string { return fmt.Sprint(ctx.Game().Players) },
+			func(g *config.GameSetup, d int) { g.Players = wrap(g.Players, d, ctx.MaxPlayers) }))
+		hints = append(hints, func() string { return "Players take turns" })
+	}
+	if ctx.StartLevels > 1 {
+		items = append(items, step("Starting level", func() string { return fmt.Sprint(ctx.Game().Level) },
+			func(g *config.GameSetup, d int) { g.Level = wrap(g.Level, d, ctx.StartLevels) }))
+		hints = append(hints, nil)
+	}
+	for i := range min(max(ctx.MaxPlayers, 1), config.MaxPlayers) {
+		label := "Skill"
+		if ctx.MaxPlayers > 1 {
+			label = fmt.Sprintf("Player %d skill", i+1)
+		}
+		it := step(label, func() string { return config.SkillNamed(ctx.Game().Skills[i]).Name },
+			func(g *config.GameSetup, d int) {
+				at := 0
+				for j, sk := range config.Skills {
+					if sk.ID == g.Skills[i] {
+						at = j
+					}
+				}
+				g.Skills[i] = config.Skills[wrap(at+1, d, len(config.Skills))-1].ID
+			})
+		it.DisabledIf = func() bool { return i >= ctx.Game().Players }
+		items = append(items, it)
+		hints = append(hints, func() string { return config.SkillNamed(ctx.Game().Skills[i]).Desc })
+	}
+	items = append(items, ui.Item{Label: "Start game", Confirm: func() {
+		sk := *config.SkillNamed(ctx.Game().Skills[0])
+		ctx.Switch(ctx.makeGame(func(c *Context) Scene { return c.NewPlay(c, sk) }))
+	}})
+	return items, append(hints, nil)
+}
+
 // Draw implements Scene.
-func (s *PlayersSelect) Draw(ctx *Context, dst *ebiten.Image) {
-	drawMenuScreen(ctx, dst, "PLAYERS", &s.menu, "Players take turns")
+func (s *GameMenu) Draw(ctx *Context, dst *ebiten.Image) {
+	hint := "Left/Right: change   Enter: start"
+	if s.menu.Cursor < len(s.hints) && s.hints[s.menu.Cursor] != nil {
+		hint = s.hints[s.menu.Cursor]()
+	}
+	drawMenuScreen(ctx, dst, "GAME", &s.menu, hint)
 }
 
 // SkillSelect chooses the skill level and starts a game.

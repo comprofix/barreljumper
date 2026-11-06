@@ -168,12 +168,10 @@ type Context struct {
 	// start on; 0 or 1 is the first. The -screen flag sets it, for
 	// testing, and such games are tests too.
 	StartScreen int
-	// MaxPlayers is how many players the game supports taking turns; above
-	// one, Play asks how many before the skill.
-	MaxPlayers int
-	// Players is how many players the game being started has, from the
-	// Players menu; 0 is one.
-	Players int
+	// MaxPlayers is how many players can take turns, and StartLevels how
+	// many starting levels the game offers. Above one of either, Play opens
+	// the game menu (GameMenu) in place of the skill menu.
+	MaxPlayers, StartLevels int
 
 	pixel           *ebiten.Image // the pixel look's screen, for scenes enlarged in the smooth look; a render cache
 	next            Scene
@@ -181,6 +179,16 @@ type Context struct {
 	quit            bool
 	settingsChanged bool
 	scoresChanged   bool
+}
+
+// Game is the game setup the game menu chose, kept in the settings and
+// made valid for this game.
+func (c *Context) Game() config.GameSetup {
+	var g config.GameSetup
+	if c.Settings != nil {
+		g = c.Settings.Game
+	}
+	return g.Clamped(c.MaxPlayers, c.StartLevels)
 }
 
 // Testing reports whether games are started for testing, part way in:

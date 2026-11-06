@@ -127,33 +127,38 @@ func (t *Tally) Draw(ctx *Context, dst *ebiten.Image) {
 	}
 }
 
-// AfterGame is where a finished game goes once its scores are final, one
-// per player: initials entry for each score that makes the table, in
-// player order, then the table itself. A game started for testing
-// (Context.Testing) is not entered.
-func AfterGame(ctx *Context, skill config.Skill, points ...int) Scene {
-	first := 1
-	if len(points) == 1 {
-		first = 0 // a one-player game shows no player number
-	}
-	return nextEntry(ctx, skill, points, first, -1)
+// Result is one player's final score and the skill they played.
+type Result struct {
+	Skill  config.Skill
+	Points int
 }
 
-// nextEntry offers the entry for the first of points that qualifies, or
-// shows the table with place highlighted. first is the player number of
-// points[0], or 0 when players are not numbered.
-func nextEntry(ctx *Context, skill config.Skill, points []int, first, place int) Scene {
-	if ctx.Testing() {
-		return NewHighScoreTable(skill, place)
+// AfterGame is where a finished game goes once its scores are final, one
+// result per player: initials entry for each score that makes its skill's
+// table, in player order, then the table itself. A game started for
+// testing (Context.Testing) is not entered.
+func AfterGame(ctx *Context, results ...Result) Scene {
+	first := 1
+	if len(results) == 1 {
+		first = 0 // a one-player game shows no player number
 	}
-	for i, pts := range points {
-		if ctx.Scores.Qualifies(skill.ID, pts) {
-			e := NewHighScoreEntry(skill, pts)
-			e.rest = points[i+1:]
-			if first > 0 {
-				e.player = first + i
+	return nextEntry(ctx, results, first, results[len(results)-1].Skill, -1)
+}
+
+// nextEntry offers the entry for the first of results that qualifies, or
+// shows the table of skill with place highlighted. first is the player
+// number of results[0], or 0 when players are not numbered.
+func nextEntry(ctx *Context, results []Result, first int, skill config.Skill, place int) Scene {
+	if !ctx.Testing() {
+		for i, r := range results {
+			if ctx.Scores.Qualifies(r.Skill.ID, r.Points) {
+				e := NewHighScoreEntry(r.Skill, r.Points)
+				e.rest = results[i+1:]
+				if first > 0 {
+					e.player = first + i
+				}
+				return e
 			}
-			return e
 		}
 	}
 	return NewHighScoreTable(skill, place)
@@ -166,7 +171,7 @@ type HighScoreEntry struct {
 	skill   config.Skill
 	points  int
 	player  int                     // the player shown, from 1, or 0 in a one-player game
-	rest    []int                   // the later players' scores, offered next
+	rest    []Result                // the later players' scores, offered next
 	letters [config.InitialsLen]int // indexes into score.Letters
 	slot    int
 	ticks   int64
@@ -212,7 +217,7 @@ func (e *HighScoreEntry) Update(ctx *Context) error {
 		}
 		place := ctx.Scores.Add(e.skill.ID, e.Initials(), e.points)
 		ctx.ScoresChanged()
-		ctx.Switch(nextEntry(ctx, e.skill, e.rest, e.player+1, place))
+		ctx.Switch(nextEntry(ctx, e.rest, e.player+1, e.skill, place))
 	}
 	return nil
 }

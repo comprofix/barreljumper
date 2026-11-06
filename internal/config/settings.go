@@ -13,8 +13,8 @@ const (
 	ScoresFile   = "scores.json"
 )
 
-// Settings are the player's choices saved between runs. They
-// cover presentation and sound only and never change the rules.
+// Settings are the player's choices saved between runs. They cover
+// presentation, sound and the last game setup, and never change the rules.
 type Settings struct {
 	// Look is the name of the look shown, in a game with two (see Looks);
 	// empty, and not saved, in a game with one.
@@ -32,6 +32,33 @@ type Settings struct {
 	MusicVolume   float64   `json:"music_volume"`  // 0–1
 	SFXVolume     float64   `json:"sfx_volume"`    // 0–1
 	ReducedMotion bool      `json:"reduced_motion"`
+	// Game is the last game chosen in the game menu, offered again.
+	Game GameSetup `json:"game"`
+}
+
+// GameSetup is how a game starts: the player count, the starting level
+// and each player's skill. A game without the game menu leaves it alone.
+type GameSetup struct {
+	Players int                `json:"players"` // 1 or 2
+	Level   int                `json:"level"`   // the starting level, from 1
+	Skills  [MaxPlayers]string `json:"skills"`  // skill IDs, one per player
+}
+
+// MaxPlayers is the most players a game setup holds.
+const MaxPlayers = 2
+
+// Clamped returns g made valid for up to players players and levels
+// starting levels: unknown skills are Arcade, the default.
+func (g GameSetup) Clamped(players, levels int) GameSetup {
+	players = min(max(players, 1), MaxPlayers)
+	g.Players = min(max(g.Players, 1), players)
+	g.Level = min(max(g.Level, 1), max(levels, 1))
+	for i, id := range g.Skills {
+		if SkillNamed(id) == nil {
+			g.Skills[i] = DefaultSkill().ID
+		}
+	}
+	return g
 }
 
 // DefaultSettings are the settings for looks l with no saved file: the

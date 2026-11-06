@@ -177,3 +177,13 @@ func TestAudioLevels(t *testing.T) {
 		}
 	}
 }
+
+func TestGameSetupClamped(t *testing.T) {
+	g := GameSetup{Players: 5, Level: 12, Skills: [MaxPlayers]string{"hard", "nonsense"}}.Clamped(2, 8)
+	if g.Players != 2 || g.Level != 8 || g.Skills != [MaxPlayers]string{"hard", "arcade"} {
+		t.Errorf("clamped %+v", g)
+	}
+	if g := (GameSetup{}).Clamped(1, 1); g.Players != 1 || g.Level != 1 || g.Skills[0] != "arcade" {
+		t.Errorf("empty setup %+v", g)
+	}
+}

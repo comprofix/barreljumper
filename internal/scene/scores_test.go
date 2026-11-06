@@ -46,10 +46,10 @@ func TestTallyConfirmSkipsTheCount(t *testing.T) {
 func TestAfterGame(t *testing.T) {
 	h := newHarness(t, NewMainMenu())
 	sk := config.Skills[0]
-	if _, ok := AfterGame(h.ctx, sk, 0).(*HighScoreTable); !ok {
+	if _, ok := AfterGame(h.ctx, Result{sk, 0}).(*HighScoreTable); !ok {
 		t.Error("a score of 0 should go straight to the table")
 	}
-	if _, ok := AfterGame(h.ctx, sk, 10).(*HighScoreEntry); !ok {
+	if _, ok := AfterGame(h.ctx, Result{sk, 10}).(*HighScoreEntry); !ok {
 		t.Error("a first score should ask for initials")
 	}
 }
@@ -111,15 +111,15 @@ func TestHighScoreTableFromTheMenu(t *testing.T) {
 // -level, is not offered the high score table.
 func TestTestGamesMakeNoTable(t *testing.T) {
 	h := newHarness(t, NewMainMenu())
-	if _, ok := AfterGame(h.ctx, config.Skills[0], 5000).(*HighScoreEntry); !ok {
+	if _, ok := AfterGame(h.ctx, Result{config.Skills[0], 5000}).(*HighScoreEntry); !ok {
 		t.Fatal("a normal game was not offered the table")
 	}
 	h.ctx.StartLevel = 20
-	if _, ok := AfterGame(h.ctx, config.Skills[0], 5000).(*HighScoreTable); !ok {
+	if _, ok := AfterGame(h.ctx, Result{config.Skills[0], 5000}).(*HighScoreTable); !ok {
 		t.Error("a game started part way was offered the table")
 	}
 	h.ctx.StartLevel, h.ctx.StartScreen = 1, 2
-	if _, ok := AfterGame(h.ctx, config.Skills[0], 5000).(*HighScoreTable); !ok {
+	if _, ok := AfterGame(h.ctx, Result{config.Skills[0], 5000}).(*HighScoreTable); !ok {
 		t.Error("a game started on a later screen was offered the table")
 	}
 }
@@ -157,38 +157,61 @@ func TestScoresByMouse(t *testing.T) {
 func TestAfterGameEntersEachPlayer(t *testing.T) {
 	h := newHarness(t, NewMainMenu())
 	sk := config.Skills[0]
-	e, ok := AfterGame(h.ctx, sk, 300, 700).(*HighScoreEntry)
+	e, ok := AfterGame(h.ctx, Result{sk, 300}, Result{sk, 700}).(*HighScoreEntry)
 	if !ok || e.player != 1 || e.points != 300 {
 		t.Fatalf("first entry %+v", e)
 	}
 	h.ctx.Scores.Add(sk.ID, "AAA", 300)
-	next, ok := nextEntry(h.ctx, sk, e.rest, e.player+1, 0).(*HighScoreEntry)
+	next, ok := nextEntry(h.ctx, e.rest, e.player+1, sk, 0).(*HighScoreEntry)
 	if !ok || next.player != 2 || next.points != 700 {
 		t.Fatalf("second entry %+v", next)
 	}
-	if e, _ := AfterGame(h.ctx, sk, 0, 900).(*HighScoreEntry); e == nil || e.player != 2 {
+	if e, _ := AfterGame(h.ctx, Result{sk, 0}, Result{sk, 900}).(*HighScoreEntry); e == nil || e.player != 2 {
 		t.Errorf("only player 2 qualifying: %+v", e)
 	}
-	if e, _ := AfterGame(h.ctx, sk, 900).(*HighScoreEntry); e == nil || e.player != 0 {
+	if e, _ := AfterGame(h.ctx, Result{sk, 900}).(*HighScoreEntry); e == nil || e.player != 0 {
 		t.Errorf("a one-player entry is numbered: %+v", e)
 	}
 }
 
-func TestPlayersMenu(t *testing.T) {
+func TestGameMenu(t *testing.T) {
 	h := newHarness(t, NewMainMenu())
-	if _, ok := NewPlayFlow(h.ctx).(*SkillSelect); !ok || h.ctx.Players != 1 {
-		t.Error("a one-player game should go straight to the skill menu")
+	if _, ok := NewPlayFlow(h.ctx).(*SkillSelect); !ok {
+		t.Error("a game with one player and one level should go straight to the skill menu")
 	}
-	h.ctx.MaxPlayers = 2
-	s, ok := NewPlayFlow(h.ctx).(*PlayersSelect)
+	h.ctx.MaxPlayers, h.ctx.StartLevels = 2, 8
+	m, ok := NewPlayFlow(h.ctx).(*GameMenu)
 	if !ok {
-		t.Fatal("no Players menu for a two-player game")
+		t.Fatal("no game menu for a two-player game")
 	}
-	h.ctx.Switch(s)
-	h.press(ebiten.KeyEnter) // let the fade finish into the menu
-	h.press(ebiten.KeyArrowDown)
-	h.press(ebiten.KeyEnter)
-	if h.ctx.Players != 2 {
-		t.Errorf("Players %d after choosing 2 Players", h.ctx.Players)
+	if g := h.ctx.Game(); g.Players != 1 || g.Level != 1 || g.Skills != [2]string{"arcade", "arcade"} {
+		t.Fatalf("default setup %+v", g)
+	}
+	m.Update(h.ctx)
+	labels := ""
+	for _, it := range m.menu.Items {
+		labels += it.Label + ";"
+	}
+	if labels != "Players;Starting level;Player 1 skill;Player 2 skill;Start game;" {
+		t.Fatalf("items %s", labels)
+	}
+	if !m.menu.Items[3].IsDisabled() {
+		t.Error("player 2's skill should be disabled in a one-player game")
+	}
+	m.menu.Items[0].Adjust(1)
+	m.menu.Items[1].Adjust(-1) // wraps to 8
+	m.menu.Items[2].Adjust(-1) // Easy
+	m.menu.Items[3].Confirm()  // Hard
+	if g := h.ctx.Game(); g.Players != 2 || g.Level != 8 || g.Skills != [2]string{"easy", "hard"} {
+		t.Errorf("setup after changes %+v", g)
+	}
+	if !h.ctx.TakeSettingsChanged() {
+		t.Error("the setup was not saved")
+	}
+	if m.menu.Items[3].IsDisabled() {
+		t.Error("player 2's skill is disabled in a two-player game")
+	}
+	if h.ctx.Testing() {
+		t.Error("a game started at a later level from the menu is not a test")
 	}
 }
