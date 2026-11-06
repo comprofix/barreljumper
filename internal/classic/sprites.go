@@ -91,54 +91,122 @@ func drawBelt(f field, b belt, tick int64) {
 // Y..Y+31: a hulking demolition hand in a red hard hat.
 func drawThrower(f field, t thrower) {
 	x, y := float32(t.x), float32(t.y)
-	f.ellipse(x+20, y+31, 16, 1.5, shadowColour)
-	// Legs and boots.
-	f.rect(x+9, y+24, 8, 7, bruteBib)
-	f.rect(x+23, y+24, 8, 7, bruteBib)
-	f.roundRect(x+7, y+29, 11, 3, 1, boot)
-	f.roundRect(x+22, y+29, 11, 3, 1, boot)
-	// The barrel chest in a grey work shirt, and bib overalls over it.
-	f.roundRect(x+5, y+8, 30, 18, 6, bruteShirt)
-	f.roundRect(x+10, y+15, 20, 11, 2, bruteBib)
-	f.rect(x+12, y+9, 2.5, 7, bruteBib)
-	f.rect(x+25.5, y+9, 2.5, 7, bruteBib)
-	f.circle(x+13.2, y+16, 1, hammerSteel)
-	f.circle(x+26.8, y+16, 1, hammerSteel)
-	f.rect(x+5, y+8, 30, 2, mix(bruteShirt, rgb(0xffffff), 0.15))
-	// The head, a little small for the shoulders.
-	f.circle(x+20, y+6, 5.5, bruteSkin)
-	f.rect(x+16, y+7, 8, 3.5, mix(bruteSkin, eyeColour, 0.45)) // stubble
-	f.rect(x+16.5, y+4.5, 2, 1.4, eyeColour)
-	f.rect(x+21.5, y+4.5, 2, 1.4, eyeColour)
-	f.rect(x+15.5, y+3.4, 3.5, 0.8, eyeColour) // a scowl
-	f.rect(x+21, y+3.4, 3.5, 0.8, eyeColour)
-	f.ellipse(x+20, y+1.5, 6.5, 3, bruteHat)
-	f.rect(x+12.5, y+1.8, 15, 1.4, mix(bruteHat, eyeColour, 0.3))
-	arm := func(ax, ay, w, h float32) {
-		f.roundRect(ax, ay, w, h, 2.5, bruteShirt)
-		f.circle(ax+w/2, ay+h, 3, bruteSkin)
+	white, black := rgb(0xffffff), rgb(0x101018)
+	shirtLight, shirtDark := mix(bruteShirt, white, 0.22), mix(bruteShirt, black, 0.3)
+	bibLight, bibDark := mix(bruteBib, white, 0.2), mix(bruteBib, black, 0.35)
+	skinLight, skinDark := mix(bruteSkin, white, 0.25), mix(bruteSkin, black, 0.3)
+	f.ellipse(x+20, y+31.2, 17, 1.6, shadowColour)
+
+	// Legs in the overalls, creased, and steel-toed boots.
+	for _, lx := range []float32{x + 9, x + 23} {
+		f.rect(lx, y+23, 8, 7, bruteBib)
+		f.rect(lx, y+23, 2, 7, bibLight)
+		f.rect(lx+6, y+23, 2, 7, bibDark)
+		f.rect(lx+3.8, y+25, 0.4, 4, bibDark)
+		f.roundRect(lx-2, y+28.6, 12, 3.4, 1.2, boot)
+		f.roundRect(lx-2, y+28.6, 4.5, 2.4, 1.1, mix(boot, white, 0.25)) // the toe cap
+		f.rect(lx-2, y+31.2, 12, 0.8, black)                             // the sole
+		f.line(lx+3, y+29.2, lx+7, y+29.2, 0.35, mix(boot, white, 0.4))  // laces
 	}
+
+	// The barrel chest in a work shirt, lit from the left.
+	f.roundRect(x+5, y+8, 30, 17, 6, bruteShirt)
+	f.roundRect(x+5, y+8, 10, 15, 5, shirtLight)
+	f.roundRect(x+25, y+9, 10, 15, 5, shirtDark)
+	f.roundRect(x+9, y+8, 22, 15, 5, bruteShirt)
+	f.ellipse(x+14, y+11, 4, 2, shirtLight) // the chest
+	f.ellipse(x+26, y+11, 4, 2, mix(bruteShirt, white, 0.1))
+	// The bib of the overalls: straps, buckles, a pocket with a pencil.
+	f.roundRect(x+10, y+14, 20, 11, 2, bruteBib)
+	f.rect(x+10, y+14, 3, 11, bibLight)
+	f.rect(x+27, y+14, 3, 11, bibDark)
+	f.rect(x+12, y+8.5, 2.6, 6.5, bruteBib)
+	f.rect(x+25.4, y+8.5, 2.6, 6.5, bibDark)
+	for _, bx := range []float32{x + 13.3, x + 26.7} {
+		f.roundRect(bx-1.4, y+14.2, 2.8, 2, 0.5, hammerDark)
+		f.roundRect(bx-1, y+14.5, 2, 1.3, 0.4, hammerSteel)
+	}
+	f.roundRect(x+16, y+17, 8, 5, 1, bibDark)
+	f.rect(x+16, y+17, 8, 1, bibLight)
+	f.rect(x+21, y+15, 1, 3, hazardYellow)
+	f.rect(x+21, y+14.6, 1, 0.6, rgb(0xe08080))
+	f.line(x+10.6, y+24.4, x+29.4, y+24.4, 0.3, bibLight) // stitching
+
+	// The head, small for the shoulders: ears, a broad jaw with stubble,
+	// heavy brows and a scowl.
+	f.rect(x+17.5, y+9, 5, 2, skinDark) // the neck
+	f.circle(x+14.6, y+6, 1.3, skinDark)
+	f.circle(x+25.4, y+6, 1.3, skinDark)
+	f.circle(x+20, y+5.8, 5.4, bruteSkin)
+	f.roundRect(x+15.4, y+6, 9.2, 5.2, 2.4, bruteSkin)
+	f.ellipse(x+17.6, y+5, 2.2, 2.6, skinLight)
+	f.ellipse(x+20, y+9.6, 4.2, 1.7, mix(bruteSkin, eyeColour, 0.16)) // stubble along the jaw
+	for i := float32(0); i < 4; i++ {
+		f.circle(x+17+i*2, y+10.2, 0.2, mix(bruteSkin, eyeColour, 0.4))
+	}
+	f.rect(x+17.5, y+9, 5, 0.7, rgb(0x5a2a20))                               // a hard mouth
+	f.poly(skinDark, x+19.4, y+5, x+20.6, y+5, x+21.2, y+7.6, x+18.8, y+7.6) // the nose
+	f.rect(x+19.4, y+5, 0.6, 2.4, skinLight)
+	f.rect(x+16.4, y+4.6, 2, 1.3, white)
+	f.rect(x+21.6, y+4.6, 2, 1.3, white)
+	f.rect(x+17.2, y+4.7, 1, 1.1, eyeColour)
+	f.rect(x+21.8, y+4.7, 1, 1.1, eyeColour)
+	f.poly(captiveHair, x+15.4, y+3.2, x+19.2, y+4, x+19.2, y+4.8, x+15.6, y+4.2) // the brows
+	f.poly(captiveHair, x+24.6, y+3.2, x+20.8, y+4, x+20.8, y+4.8, x+24.4, y+4.2)
+
+	// The red hard hat, shaded round, with its ridge, brim and a dent.
+	hatLight, hatDark := mix(bruteHat, white, 0.35), mix(bruteHat, black, 0.35)
+	f.ellipse(x+20, y+1.6, 6.6, 3.2, hatDark)
+	f.ellipse(x+19.6, y+1.3, 6, 2.8, bruteHat)
+	f.ellipse(x+17.6, y+0.4, 2.6, 1.2, hatLight)
+	f.rect(x+19.5, y-1.5, 1, 4, hatDark)
+	f.roundRect(x+12.4, y+2.4, 15.2, 1.6, 0.8, hatDark)
+	f.rect(x+12.4, y+2.4, 15.2, 0.5, bruteHat)
+	f.ellipse(x+23.4, y+0.6, 1.1, 0.6, hatDark)
+
+	// The arms: rolled sleeves, shaded forearms and fists, by pose.
+	type limb struct{ sx, sy, ex, ey, hx, hy float32 }
+	left := limb{6, 11, 2.5, 17.5, 3.5, 23.5}
+	right := limb{34, 11, 37.5, 17.5, 36.5, 23.5}
 	switch t.pose {
 	case throwerPickUp:
-		arm(x+1, y+10, 6, 14)
-		arm(x+33, y+10, 6, 9)
+		left = limb{6, 11, 2, 18, 3, 26}
+		right = limb{34, 11, 37.5, 16, 37, 21}
 	case throwerThrow:
-		arm(x+1, y+10, 6, 9)
-		f.roundRect(x+32, y+9, 9, 6, 2.5, bruteShirt)
-		f.circle(x+40, y+12, 3, bruteSkin)
+		right = limb{34, 11, 38, 12, 41, 12.5}
 	case throwerTauntA:
-		arm(x+1, y+1, 6, 9)
-		arm(x+33, y+10, 6, 12)
+		left = limb{6, 11, 1.5, 7, 3, 1.5}
 	case throwerTauntB:
-		arm(x+1, y+10, 6, 12)
-		arm(x+33, y+1, 6, 9)
-	default:
-		arm(x+1, y+10, 6, 11)
-		arm(x+33, y+10, 6, 11)
+		right = limb{34, 11, 38.5, 7, 37, 1.5}
+	}
+	if t.holding {
+		left = limb{6, 11, 4, 17, 11.5, 20.5}
+		right = limb{34, 11, 36, 17, 28.5, 20.5}
+	}
+	arm := func(l limb, lit bool) {
+		sleeve, fore := bruteShirt, bruteSkin
+		if lit {
+			sleeve, fore = shirtLight, skinLight
+		}
+		sx, sy, ex, ey, hx, hy := x+l.sx, y+l.sy, x+l.ex, y+l.ey, x+l.hx, y+l.hy
+		f.line(sx, sy, ex, ey, 6.2, shirtDark)
+		f.line(sx, sy, ex, ey, 5, sleeve)
+		f.circle(sx, sy, 3, sleeve)
+		f.circle(ex, ey, 2.7, shirtDark) // the rolled cuff
+		f.line(ex, ey, hx, hy, 4.4, skinDark)
+		f.line(ex, ey, hx, hy, 3.4, fore)
+		f.circle(hx, hy, 2.8, skinDark)
+		f.circle(hx, hy, 2.3, bruteSkin)
+		f.circle(hx-0.6, hy-0.7, 0.9, skinLight)
+		for i := float32(-1); i <= 1; i++ { // knuckles
+			f.circle(hx+i*0.9, hy+1.4, 0.35, skinDark)
+		}
 	}
 	if t.holding {
 		drawSpecialBarrel(f, x+11, y+16)
 	}
+	arm(left, true)
+	arm(right, false)
 }
 
 // drawCaptive draws the site architect waiting to be rescued, in the
