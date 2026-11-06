@@ -123,9 +123,9 @@ func TestBrokenLadderCapsAndExits(t *testing.T) {
 		ladder, y, direction, calls, wantY int
 		attached                           bool
 	}{
-		{"lower cap", 16, 176, -1, 30, 170, true},
+		{"lower cap", 14, 176, -1, 30, 170, true},
 		{"upper cap", 15, 156, 1, 30, 166, true},
-		{"lower exit", 16, 176, 1, 5, 178, false},
+		{"lower exit", 14, 176, 1, 5, 178, false},
 		{"upper exit", 15, 156, -1, 15, 150, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -14,17 +14,25 @@ type ladder struct {
 }
 
 // barrelsLadders lists the 17 attachable records in the documented Barrels
-// layout. The four reserved upper records are outside the attachment scan.
+// layout, in the reference record order. Player, barrel and fireball scans
+// take the first match, so the order is part of the specification.
 var barrelsLadders = [...]ladder{
 	{220, 178, 16, fullLadder}, {30, 146, 16, fullLadder},
 	{220, 114, 16, fullLadder}, {30, 82, 16, fullLadder},
 	{130, 141, 26, fullLadder}, {90, 79, 22, fullLadder},
 	{150, 110, 24, fullLadder}, {220, 50, 16, fullLadder},
+	{190, 96, 10, lowerSegment}, {190, 74, 5, upperSegment},
+	{110, 62, 10, lowerSegment}, {110, 46, 5, upperSegment},
+	{80, 123, 14, lowerSegment}, {80, 107, 5, upperSegment},
+	{100, 184, 10, lowerSegment}, {100, 172, 5, upperSegment},
 	{150, 30, 10, fullLadder},
-	{190, 74, 5, upperSegment}, {190, 96, 10, lowerSegment},
-	{110, 46, 5, upperSegment}, {110, 62, 10, lowerSegment},
-	{80, 107, 5, upperSegment}, {80, 123, 14, lowerSegment},
-	{100, 172, 5, upperSegment}, {100, 184, 10, lowerSegment},
+}
+
+// barrelsReservedLadders are the four upper records beside the thrower. No
+// player, barrel or fireball scan uses them; they are drawn only.
+var barrelsReservedLadders = [...]ladder{
+	{80, 0, 20, fullLadder}, {100, 0, 20, fullLadder},
+	{80, 20, 20, fullLadder}, {100, 20, 20, fullLadder},
 }
 
 // attach returns the snapped player X when the player can enter the ladder.

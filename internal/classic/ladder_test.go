@@ -34,8 +34,8 @@ func TestLadderEndpoints(t *testing.T) {
 		{0, 194, 194, false},
 		{9, 68, 68, false},
 		{9, 85, 84, true},
-		{10, 97, 98, true},
-		{10, 106, 106, false},
+		{8, 97, 98, true},
+		{8, 106, 106, false},
 	} {
 		foot, attached := barrelsLadders[tc.index].climbLimit(tc.foot)
 		if foot != tc.wantFoot || attached != tc.wantAttached {
