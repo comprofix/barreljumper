@@ -27,7 +27,8 @@ const (
 const (
 	openRowEvery = 70
 	openRowTicks = 90
-	openRows     = 6
+	openRows     = 7   // the six Barrels rows, then the captive's platform
+	openLift     = 30  // the empty hook going back up after a landing
 	openLadders  = 460 // ladders, drum and hammers appear
 	openHook     = 480 // the hook comes down to the thrower
 	openHoist    = 520 // and lifts him and the captive
@@ -213,7 +214,7 @@ func barrelsRow(i int) int {
 	if i < 13 {
 		return 0
 	}
-	return min((i-13)/12+1, openRows-1)
+	return min((i-13)/12+1, 5)
 }
 
 // drawOpening draws the opening scene on the Barrels screen.
@@ -227,29 +228,34 @@ func (p *Play) drawOpening(f field, tick int64) {
 			drawLadder(f, l, false)
 		}
 	}
-	// Each row comes down on the crane, the cable at the field's centre.
+	// Each piece comes down on the crane hook, slung from two shackles on
+	// the beam; once it is down the empty hook goes back up.
 	for r := range openRows {
 		start := openRowStart(r)
 		if t < start {
 			continue
 		}
+		cells := openPiece(s, r)
 		drop := float32(0)
 		if r > 0 {
 			drop = (1 - smooth(span(t, start, openRowTicks))) * -210
 		}
-		for i, g := range s.girders {
-			if barrelsRow(i) == r {
-				drawBeam(f, float32(g.left), float32(g.y)+drop, float32(g.right-g.left))
-			}
+		for _, g := range cells {
+			drawBeam(f, float32(g.left), float32(g.y)+drop, float32(g.right-g.left))
 		}
-		if r == openRows-1 {
-			drawBeam(f, float32(barrelsGoal.left), float32(barrelsGoal.y)+drop, 50)
+		if r == 0 {
+			continue
 		}
-		if drop < 0 {
-			y := float32(s.girders[firstOfRow(r)].y) + drop
-			f.line(110, y, 130, -20, 0.6, cable)
-			f.line(150, y, 130, -20, 0.6, cable)
-			drawHook(f, 130, y-2)
+		hx, hy, a, b := rig(cells, drop)
+		switch landed := openRowLanded(r); {
+		case t < landed:
+			f.line(hx, hy+1.6, a.x, a.y, 0.6, cable)
+			f.line(hx, hy+1.6, b.x, b.y, 0.6, cable)
+			drawShackle(f, a)
+			drawShackle(f, b)
+			drawHook(f, hx, hy)
+		case t < landed+openLift:
+			drawHook(f, hx, lerp(hy, -12, smooth(span(t, landed, openLift))))
 		}
 	}
 	if t >= openLadders {
@@ -326,11 +332,51 @@ func (p *Play) drawOpening(f field, tick int64) {
 	}
 }
 
-func firstOfRow(r int) int {
-	if r == 0 {
-		return 0
+// openPiece is the girders the crane lowers as piece r of the opening:
+// a Barrels row, bottom first, then the captive's platform.
+func openPiece(s *stage, r int) []girder {
+	if r == openRows-1 {
+		return []girder{{barrelsGoal.left, barrelsGoal.left + 50, barrelsGoal.y}}
 	}
-	return 13 + (r-1)*12
+	var cells []girder
+	for i, g := range s.girders {
+		if barrelsRow(i) == r {
+			cells = append(cells, g)
+		}
+	}
+	return cells
+}
+
+type spot struct{ x, y float32 }
+
+// rig is where the crane holds a piece lowered by drop: the hook above
+// its middle and the two shackles a quarter in from each end, on the
+// beam's top where it runs under them.
+func rig(cells []girder, drop float32) (hx, hy float32, a, b spot) {
+	left, right := float32(cells[0].left), float32(cells[len(cells)-1].right)
+	top := func(x float32) float32 {
+		for _, g := range cells {
+			if x < float32(g.right) {
+				return float32(g.y) + drop
+			}
+		}
+		return float32(cells[len(cells)-1].y) + drop
+	}
+	ax, bx := lerp(left, right, 0.25), lerp(left, right, 0.75)
+	if len(cells) == 1 {
+		ax, bx = left+8, right-8
+	}
+	a, b = spot{ax, top(ax)}, spot{bx, top(bx)}
+	hx = (ax + bx) / 2
+	hy = min(a.y, b.y) - (bx-ax)*0.35
+	return hx, hy, a, b
+}
+
+// drawShackle draws the shackle a sling is fixed to on a beam's top.
+func drawShackle(f field, at spot) {
+	f.circle(at.x, at.y-0.6, 0.9, hammerDark)
+	f.circle(at.x, at.y-0.6, 0.45, hammerSteel)
+	f.rect(at.x-1.2, at.y-0.2, 2.4, 0.7, hammerDark)
 }
 
 // rivetFaller reports whether girder g drops in the Rivets ending, and its
