@@ -154,6 +154,12 @@ type Context struct {
 	// NewDemo, if set, starts the game playing itself, which the title
 	// shows behind its logo.
 	NewDemo func(ctx *Context) Scene
+	// DrawTitle, if set, draws the game's own title art in place of the
+	// name; the title adds the prompt over it. With it, the title runs an
+	// attract cycle: the art for AttractTicks, then the demo (NewDemo) on
+	// its own until it is over (DemoOver) or a key is pressed, then the
+	// art again.
+	DrawTitle func(ctx *Context, dst *ebiten.Image)
 	// NativePlay says the scenes NewPlay and NewDemo make are Native, drawn
 	// for the smooth look as well as the pixel one. Until then a game with
 	// two looks leaves it false and they are made in the pixel look.
