@@ -145,10 +145,12 @@ func (s *stage) update(c Controls, eligible bool) int {
 			switch {
 			case m.jumping && !jumping:
 				s.sounds |= soundJump
-			case m.ladder != nil && m.Y != y && m.Y%4 == 0:
-				s.sounds |= soundClimb
-			case !m.jumping && m.ladder == nil && m.X != x && m.X%4 == 0:
-				s.sounds |= soundStep
+			case jumping && !m.jumping && !m.Dead:
+				s.sounds |= soundLand
+			case m.ladder != nil && footfall(y) != footfall(m.Y):
+				s.sounds |= alternate(m.Y, soundClimb, soundClimbB)
+			case !m.jumping && m.ladder == nil && footfall(x) != footfall(m.X):
+				s.sounds |= alternate(m.X, soundStep, soundStepB)
 			}
 			if s.player.apex {
 				s.scanJump()

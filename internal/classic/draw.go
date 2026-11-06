@@ -172,9 +172,11 @@ func (p *Play) drawPlayer(f field) {
 	case m.jumping || m.falling:
 		stride = 2.5
 	case climbing:
-		stride = float32((m.Y/2)%2)*2 - 1
+		// Hands and feet change on the rung sounds' 4-pixel steps.
+		stride = float32(footfall(m.Y)&1)*2 - 1
 	default:
-		stride = float32((m.X/3)%3) - 1
+		// The feet change on the footstep sounds' 4-pixel steps.
+		stride = float32(footfall(m.X)&1)*2.4 - 1.2
 	}
 	// Legs and boots.
 	if climbing {

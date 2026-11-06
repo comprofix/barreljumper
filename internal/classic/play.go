@@ -189,13 +189,19 @@ func (p *Play) tick(c Controls, eligible bool) {
 		case stageDied:
 			p.stage.dropHammer()
 			p.phase, p.timer = dying, 0
-			p.sounds |= soundDeath
+			p.sounds |= soundHit
 		case stageCleared:
 			p.phase, p.timer = clearing, 0
 			p.jingle = clearJingle
 		}
 	case dying:
 		p.timer++
+		switch p.timer {
+		case deathFreezeTicks:
+			p.sounds |= soundSpin
+		case deathFreezeTicks + deathSpinTicks:
+			p.sounds |= soundThud
+		}
 		if p.timer >= deathFreezeTicks+deathSpinTicks+deathHoldTicks {
 			switch {
 			case p.out():
