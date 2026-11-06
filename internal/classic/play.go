@@ -11,6 +11,7 @@ const (
 	playing = iota
 	dying
 	clearing
+	playerOut // one player of two has no reserve left
 	gameOver
 )
 
@@ -22,19 +23,28 @@ const (
 	deathHoldTicks   = 146 // 2.0 s
 	clearTicks       = 109 // 1.5 s
 	gameOverTicks    = 218 // 3.0 s
+	playerOutTicks   = 218 // 3.0 s, the "Game Over Player n" message
 )
+
+// player is one player's place in the game. Each keeps their own score,
+// lives and schedule position (DESIGN section 4, M4 session and turns).
+type player struct {
+	score    int
+	reserves int
+	level    int
+	index    int // position in the level's schedule row
+	nextLife int
+}
 
 // Play is one Classic game, following the Classic schedule (DESIGN
 // section 4, Screen progression).
 type Play struct {
+	*player   // the current player
+	players   []player
+	current   int
 	skill     config.Skill
 	skillWord int
 	rng       random
-	score     int
-	reserves  int
-	level     int
-	index     int // position in the level's schedule row
-	nextLife  int
 	updates   int
 	stage     *stage
 	phase     int
@@ -50,18 +60,26 @@ func NewPlay(ctx *scene.Context, skill config.Skill) *Play {
 	if ctx != nil && ctx.RNG != nil {
 		seed = ctx.RNG.Uint32()
 	}
-	p := &Play{skill: skill, skillWord: skillWord(skill), rng: random{seed}, nextLife: 7000}
-	p.reserves = 3
-	if p.skillWord == easySkill {
-		p.reserves = 5
+	p := &Play{skill: skill, skillWord: skillWord(skill), rng: random{seed}}
+	count := 1
+	if ctx != nil && ctx.Players == 2 {
+		count = 2
 	}
-	if ctx != nil && ctx.StartLevel > 1 {
-		p.level = ctx.StartLevel - 1
+	for range count {
+		pl := player{reserves: 3, nextLife: 7000}
+		if p.skillWord == easySkill {
+			pl.reserves = 5
+		}
+		if ctx != nil && ctx.StartLevel > 1 {
+			pl.level = ctx.StartLevel - 1
+		}
+		if ctx != nil && ctx.StartScreen > 1 {
+			// Past the row's end, the last screen.
+			pl.index = min(ctx.StartScreen, len(classicSchedule[pl.level%5])) - 1
+		}
+		p.players = append(p.players, pl)
 	}
-	if ctx != nil && ctx.StartScreen > 1 {
-		// Past the row's end, the last screen.
-		p.index = min(ctx.StartScreen, len(classicSchedule[p.level%5])) - 1
-	}
+	p.player = &p.players[0]
 	p.beginTurn()
 	return p
 }
@@ -127,7 +145,11 @@ func (p *Play) Update(ctx *scene.Context) error {
 		Jump:       in.Held(input.Confirm),
 	})
 	if p.phase == gameOver && p.timer >= gameOverTicks {
-		ctx.Switch(scene.AfterGame(ctx, p.skill, p.score))
+		scores := make([]int, len(p.players))
+		for i, pl := range p.players {
+			scores[i] = pl.score
+		}
+		ctx.Switch(scene.AfterGame(ctx, p.skill, scores...))
 	}
 	return nil
 }
@@ -159,11 +181,19 @@ func (p *Play) tick(c Controls, eligible bool) {
 	case dying:
 		p.timer++
 		if p.timer >= deathFreezeTicks+deathSpinTicks+deathHoldTicks {
-			if p.reserves <= 0 {
+			switch {
+			case p.out():
 				p.phase, p.timer = gameOver, 0
-				return
+			case p.reserves <= 0:
+				p.phase, p.timer = playerOut, 0
+			default:
+				p.passTurn()
 			}
-			p.beginTurn()
+		}
+	case playerOut:
+		p.timer++
+		if p.timer >= playerOutTicks {
+			p.passTurn()
 		}
 	case clearing:
 		p.timer++
@@ -175,6 +205,29 @@ func (p *Play) tick(c Controls, eligible bool) {
 	case gameOver:
 		p.timer++
 	}
+}
+
+// out reports whether no player has a reserve left.
+func (p *Play) out() bool {
+	for _, pl := range p.players {
+		if pl.reserves > 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// passTurn gives the next turn to the next player with a reserve, as the
+// reference does after a death: one step, and one more if that player has
+// none. With one player the turn stays.
+func (p *Play) passTurn() {
+	n := len(p.players)
+	p.current = (p.current + 1) % n
+	if p.players[p.current].reserves <= 0 {
+		p.current = (p.current + 1) % n
+	}
+	p.player = &p.players[p.current]
+	p.beginTurn()
 }
 
 // collect moves points earned on the screen into the score and awards

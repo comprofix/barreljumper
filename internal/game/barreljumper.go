@@ -10,4 +10,5 @@ func init() {
 	content.NewPlay = func(ctx *scene.Context, skill config.Skill) scene.Scene {
 		return classic.NewPlay(ctx, skill)
 	}
+	content.MaxPlayers = 2
 }

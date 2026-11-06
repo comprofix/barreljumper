@@ -285,7 +285,13 @@ func (p *Play) drawText(ctx *scene.Context, f field) {
 		font.Draw(f.dst, label, x, y, sc.Dim)
 		font.Draw(f.dst, value, x, y+font.LineHeight()+2, sc.Text)
 	}
-	line(0, "SCORE", fmt.Sprint(p.score))
+	score := "SCORE"
+	if len(p.players) > 1 {
+		score = fmt.Sprint("PLAYER ", p.current+1)
+		other := 1 - p.current
+		line(5, fmt.Sprint("PLAYER ", other+1), fmt.Sprint(p.players[other].score))
+	}
+	line(0, score, fmt.Sprint(p.score))
 	line(1, "BONUS", fmt.Sprint(p.stage.bonus))
 	line(2, "LIVES", fmt.Sprint(p.reserves))
 	line(3, "LEVEL", fmt.Sprint(p.level+1))
@@ -297,6 +303,8 @@ func (p *Play) drawText(ctx *scene.Context, f field) {
 	switch p.phase {
 	case clearing:
 		message = "STAGE CLEAR"
+	case playerOut:
+		message = fmt.Sprint("GAME OVER PLAYER ", p.current+1)
 	case gameOver:
 		message = "GAME OVER"
 	}
