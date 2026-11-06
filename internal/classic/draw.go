@@ -142,7 +142,7 @@ func (p *Play) drawScreen(f field, tick int64) {
 	}
 	p.drawPlayer(f)
 	if s.smash.active {
-		drawSmash(f, float32(s.smash.x), float32(s.smash.y), s.smash.frame)
+		drawSmash(f, s.smash)
 	}
 }
 

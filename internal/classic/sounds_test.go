@@ -75,7 +75,7 @@ func TestGameplaySounds(t *testing.T) {
 	}
 	p.sounds = 0
 	p.stage.award(100, 0, 0)
-	p.stage.startSmash(0, 0)
+	p.stage.startSmash(0, 0, smashedBarrel)
 	p.tick(Controls{}, false)
 	if p.sounds&(soundPoints|soundSmash) != soundPoints|soundSmash {
 		t.Errorf("sounds %b after an award and a smash", p.sounds)

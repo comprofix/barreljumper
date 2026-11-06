@@ -28,7 +28,15 @@ type smash struct {
 	x, y         int
 	frame, timer int
 	points       int
+	kind         int // what was smashed, for the debris drawn
 }
+
+// What a smash destroyed. The kind is drawn only; it carries no rules.
+const (
+	smashedBarrel = iota
+	smashedFlame
+	smashedPie
+)
 
 func (s *stage) collectHammer() {
 	m := s.player
@@ -115,7 +123,7 @@ func (s *stage) hitWithHammer() {
 		f := &s.fireballs[i]
 		if f.active && f.x+2 < left+w && f.x+14 > left && f.y < top+ht && f.y+16 > top {
 			f.active = false
-			s.startSmash(f.x, f.y)
+			s.startSmash(f.x, f.y, smashedFlame)
 			return
 		}
 	}
@@ -127,7 +135,7 @@ func (s *stage) hitWithHammer() {
 		}
 		if b.active && b.x+2 < left+w && b.x+right > left && b.y < top+ht && b.y+11 > top {
 			b.active = false
-			s.startSmash(b.x, b.y)
+			s.startSmash(b.x, b.y, smashedBarrel)
 			return
 		}
 	}
@@ -135,14 +143,14 @@ func (s *stage) hitWithHammer() {
 		p := &s.pies[i]
 		if p.active && p.x < left+w && p.x+18 > left && p.y < top+ht && p.y+8 > top {
 			p.active = false
-			s.startSmash(p.x, p.y)
+			s.startSmash(p.x, p.y, smashedPie)
 			return
 		}
 	}
 }
 
-func (s *stage) startSmash(x, y int) {
-	s.smash = smash{active: true, x: x + 2, y: y + 1}
+func (s *stage) startSmash(x, y, kind int) {
+	s.smash = smash{active: true, x: x + 2, y: y + 1, kind: kind}
 	s.sounds |= soundSmash
 }
 

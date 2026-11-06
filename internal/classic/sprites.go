@@ -487,19 +487,127 @@ func drawPie(f field, x, y float32) {
 	f.ellipse(x+7, y+2.8, 3.2, 0.9, pieFill)
 }
 
-// drawSmash draws the burst of a smashed hazard at its frame.
-func drawSmash(f field, x, y float32, frame int) {
-	r := float32(3 + frame)
-	cx, cy := x+5, y+5
-	var pts []float32
-	for i := range 16 {
-		a := float32(i) * 0.3927
-		k := r
-		if i%2 == 1 {
-			k = r * 0.45
-		}
-		pts = append(pts, cx+k*cos(a), cy+k*sin(a))
+// drawSmash draws a smashed hazard's explosion through its 13 frames: a
+// flash and shock ring, a rolling fireball that darkens as it burns out,
+// debris of whatever was hit thrown out under gravity, sparks, and smoke
+// rising and thinning at the end.
+func drawSmash(f field, k smash) {
+	age := float32(k.frame) + float32(min(k.timer, 6))/7
+	cx, cy := float32(k.x)+5, float32(k.y)+4
+	white := rgb(0xffffff)
+	outer, mid, core := flameOuter, flameMid, flameCore
+	if k.kind == smashedFlame {
+		outer, mid, core = scaredOut, blueLight, scaredCore
 	}
-	f.poly(flameMid, pts...)
-	f.circle(cx, cy, r*0.35, flameCore)
+	// Smoke, behind the rest: puffs that swell, rise and thin out.
+	if age > 2.5 {
+		t := age - 2.5
+		for i := range 5 {
+			fi := float32(i)
+			px := cx + (fi-2)*3.2 + 0.8*sin(fi*1.7+t*0.6)
+			py := cy - 1 - t*1.3 - 1.5*float32(i%2)
+			r := 2.2 + t*0.55 + 0.4*fi*float32(i%3)
+			fade := clamp01(t / 9)
+			smoke := mix(rgb(0x5a5a68), skyTop, fade)
+			f.circle(px+0.6, py+0.6, r, mix(smoke, eyeColour, 0.25))
+			f.circle(px, py, r, smoke)
+			f.circle(px-r*0.3, py-r*0.3, r*0.45, mix(smoke, white, 0.12*(1-fade)))
+		}
+	}
+	// The shock ring.
+	if age < 4 {
+		r := 3 + age*4.5
+		ring := mix(core, skyTop, age/4)
+		for i := range 20 {
+			a := float32(i) * 0.31416
+			f.circle(cx+r*cos(a), cy+r*0.8*sin(a), 0.55*(1-age/4)+0.2, ring)
+		}
+	}
+	// The fireball: lumpy layers that grow, roll and burn down.
+	if age < 9 {
+		size := 9 * smooth(age/2) * (1 - smooth((age-4.5)/4.5))
+		burnt := clamp01((age - 3) / 6)
+		layers := []struct {
+			scale float32
+			c     color.RGBA
+		}{
+			{1, mix(outer, rgb(0x6a2410), burnt)},
+			{0.72, mix(mid, outer, burnt)},
+			{0.42, mix(core, mid, burnt)},
+		}
+		if k.kind == smashedFlame {
+			layers[0].c = mix(outer, blueDark, burnt)
+		}
+		for _, l := range layers {
+			r := size * l.scale
+			if r <= 0.2 {
+				continue
+			}
+			for i := range 7 {
+				fi := float32(i)
+				a := fi*0.8976 + age*0.25
+				lump := r * (0.5 + 0.12*sin(fi*2.3+age))
+				f.circle(cx+r*0.45*cos(a), cy+r*0.4*sin(a)-age*0.3, lump, l.c)
+			}
+			f.circle(cx, cy-age*0.3, r*0.6, l.c)
+		}
+	}
+	// Debris of what was hit, flung out and falling.
+	if age > 0.6 && age < 10 {
+		t := age - 0.6
+		shrink := 1 - clamp01((age-7)/3)
+		for i := range 9 {
+			fi := float32(i)
+			a := fi*0.698 + 0.35*sin(fi*3.1) - 1.57
+			v := 3 + float32(i%3)*1.1
+			px := cx + cos(a)*v*t
+			py := cy + sin(a)*v*t*0.8 + 0.32*t*t
+			spin := fi + t*1.6
+			dx, dy := cos(spin)*1.8*shrink, sin(spin)*1.8*shrink
+			switch k.kind {
+			case smashedBarrel:
+				if i%3 == 2 {
+					f.line(px-dx, py-dy, px+dx, py+dy, 0.7*shrink+0.1, hoopLight) // a bent hoop piece
+					f.line(px+dx, py+dy, px+dx*1.4-dy*0.6, py+dy*1.4+dx*0.6, 0.7*shrink+0.1, hoop)
+				} else {
+					f.line(px-dx, py-dy, px+dx, py+dy, 1.4*shrink+0.1, woodDark) // a stave
+					f.line(px-dx*0.9, py-dy*0.9, px+dx*0.9, py+dy*0.9, 0.6*shrink+0.1, woodLight)
+				}
+			case smashedPie:
+				if i%2 == 0 {
+					f.line(px-dx, py-dy, px+dx, py+dy, 1.3*shrink+0.1, pieCrust)
+				} else {
+					f.circle(px, py, 0.9*shrink+0.2, pieFill)
+					f.circle(px-0.3, py-0.3, 0.35*shrink+0.1, mix(pieFill, white, 0.4))
+				}
+			default:
+				f.line(px, py, px-cos(a)*2.2, py-sin(a)*1.8, 0.5*shrink+0.1, mix(mid, skyTop, 0.3))
+				f.circle(px, py, 0.8*shrink+0.2, core)
+			}
+		}
+	}
+	// Sparks, quick and bright, with short trails.
+	if age > 0.2 && age < 5 {
+		t := age - 0.2
+		for i := range 12 {
+			fi := float32(i)
+			a := fi*0.5236 + 0.2
+			v := 5 + float32(i%4)*1.4
+			px, py := cx+cos(a)*v*t, cy+sin(a)*v*t*0.85+0.25*t*t
+			c := mix(core, mid, t/5)
+			f.line(px, py, px-cos(a)*1.6, py-sin(a)*1.4, 0.45, mix(c, skyTop, 0.3))
+			f.circle(px, py, 0.5*(1-t/5)+0.15, c)
+		}
+	}
+	// The flash at the hit: a white core and rays.
+	if age < 2.2 {
+		fl := 1 - age/2.2
+		for i := range 8 {
+			a := float32(i)*0.7854 + 0.39
+			r := 4 + age*5
+			f.line(cx+cos(a)*1.5, cy+sin(a)*1.5, cx+cos(a)*r, cy+sin(a)*r, 1.1*fl+0.1, mix(core, white, fl))
+		}
+		f.circle(cx, cy, 2+age*1.8, mix(core, white, fl))
+		f.circle(cx, cy, (1+age)*fl, white)
+	}
 }
