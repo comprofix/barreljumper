@@ -224,7 +224,7 @@ func (p *Play) drawPlayer(f field) {
 				hx += 2
 			}
 		}
-		drawHammer(f, hx, float32(h.y), hw, hh, cx+2*facing, y+7, h.warning())
+		drawHammer(f, hx, float32(h.y), hw, hh, cx+2*facing, y+7, h.forward, h.warning())
 		f.circle(cx+2*facing, y+7, 1.2, skin)
 	}
 }

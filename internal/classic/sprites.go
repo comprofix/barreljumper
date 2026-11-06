@@ -1,5 +1,7 @@
 package classic
 
+import "image/color"
+
 // The construction-site sprites. Each function notes the collision
 // rectangle it keeps to.
 
@@ -142,17 +144,51 @@ func drawThrower(f field, t thrower) {
 // drawCaptive draws the site architect waiting to be rescued, in the
 // 10 x 17 box at (x, y), waving a rolled blueprint.
 func drawCaptive(f field, x, y float32, tick int64) {
+	jacket, jacketDark, jacketLight := captiveShirt, mix(captiveShirt, eyeColour, 0.35), mix(captiveShirt, rgb(0xffffff), 0.3)
+	skirt, skirtDark := rgb(0x2e3450), rgb(0x1e2238)
+	hairLight := mix(captiveHair, rgb(0xd08850), 0.45)
+	wave := float32((tick/20)%2) * 1.6
 	f.ellipse(x+5, y+17, 5, 1, shadowColour)
-	f.rect(x+2, y+11, 2.5, 6, denimDark)
-	f.rect(x+5.5, y+11, 2.5, 6, denimDark)
-	f.roundRect(x+1, y+5, 8, 7, 2, captiveShirt)
-	f.circle(x+5, y+3, 2.8, skin)
-	f.ellipse(x+5, y+1.4, 3, 1.8, captiveHair)
-	f.rect(x+2, y+1.4, 1, 3, captiveHair)
-	wave := float32((tick/20)%2) * 2
-	f.line(x+8.5, y+6, x+10, y+1+wave, 1.2, captiveShirt)
-	f.roundRect(x+9, y-2+wave, 2.2, 6, 1, blueprint)
-	f.circle(x+5.8, y+3, 0.4, eyeColour)
+	// Legs, shoes and a pencil skirt.
+	f.rect(x+3, y+12.5, 1.6, 3.6, skin)
+	f.rect(x+5.6, y+12.5, 1.6, 3.6, skinShade)
+	f.roundRect(x+2.4, y+15.6, 2.6, 1.4, 0.6, rgb(0x6a2030))
+	f.roundRect(x+5.2, y+15.6, 2.6, 1.4, 0.6, rgb(0x6a2030))
+	f.poly(skirt, x+2.2, y+10.4, x+8, y+10.4, x+7.6, y+13.4, x+2.6, y+13.4)
+	f.rect(x+5.6, y+10.4, 2.4, 3, skirtDark)
+	// The jacket: lit on one side, lapels open over a white blouse.
+	f.roundRect(x+1.6, y+5.4, 7, 5.6, 1.6, jacket)
+	f.rect(x+6.4, y+5.8, 2, 5, jacketDark)
+	f.rect(x+1.8, y+5.8, 1.2, 4.6, jacketLight)
+	f.poly(vestStripe, x+4.2, y+5.4, x+5.8, y+5.4, x+5, y+7.6)
+	f.line(x+4.2, y+5.4, x+4.8, y+8, 0.5, jacketDark)
+	f.line(x+5.8, y+5.4, x+5.2, y+8, 0.5, jacketDark)
+	f.circle(x+5, y+8.8, 0.35, jacketLight)
+	f.rect(x+1.8, y+10.2, 6.6, 0.7, rgb(0x3a2418)) // belt
+	// The left arm at her side; the right waves the rolled blueprint.
+	f.line(x+2, y+6.4, x+1.4, y+9.8, 1.3, jacket)
+	f.circle(x+1.4, y+10.2, 0.7, skin)
+	f.line(x+8, y+6.2, x+9.4, y+3.2+wave, 1.3, jacket)
+	f.circle(x+9.6, y+2.8+wave, 0.8, skin)
+	f.roundRect(x+9, y-2.6+wave, 2.4, 6.4, 1, blueprint)
+	f.rect(x+9.3, y-1.4+wave, 1.8, 0.4, vestStripe)
+	f.rect(x+9.3, y+0.4+wave, 1.8, 0.4, vestStripe)
+	f.ellipse(x+10.2, y-2.6+wave, 1.2, 0.5, mix(blueprint, rgb(0xffffff), 0.5))
+	// Long hair falling behind the shoulders, the neck, the face, then the
+	// fringe over it.
+	f.roundRect(x+2, y+0.8, 1.6, 6.2, 0.8, captiveHair)
+	f.roundRect(x+6.4, y+0.8, 1.6, 6.2, 0.8, captiveHair)
+	f.rect(x+4.3, y+5, 1.4, 1, skinShade)
+	f.circle(x+5, y+3.1, 2.4, skin)
+	f.ellipse(x+5, y+1.2, 2.9, 1.6, captiveHair)
+	f.rect(x+2.1, y+1.2, 1, 3.2, captiveHair)
+	f.rect(x+6.9, y+1.2, 1, 3.2, captiveHair)
+	f.ellipse(x+4.2, y+0.9, 1.4, 0.6, hairLight)
+	f.rect(x+3.9, y+2.9, 0.8, 0.9, eyeColour)
+	f.rect(x+5.5, y+2.9, 0.8, 0.9, eyeColour)
+	f.circle(x+3.6, y+4.1, 0.45, rgb(0xe88080)) // blush
+	f.circle(x+6.6, y+4.1, 0.45, rgb(0xe88080))
+	f.ellipse(x+5, y+4.5, 0.55, 0.4, rgb(0x9a3040)) // calling for help
 }
 
 // drawDrum draws the oil drum: contact X+2..X+15 at its lip, Y+8..Y+11.
@@ -226,23 +262,98 @@ func drawFireball(f field, fb fireball, scared bool, tick int64) {
 	f.rect(x+8.6, eyeY, 1.4, 2, eyeColour)
 }
 
-// drawHammer draws a sledgehammer head over the rectangle the rules test,
-// with its handle back toward hx, hy.
-func drawHammer(f field, x, y, w, h, hx, hy float32, warning bool) {
-	head, dark := hammerSteel, hammerDark
-	if warning {
-		head, dark = warnColour, mix(warnColour, eyeColour, 0.4)
+// drawHammer draws a sledgehammer over the rectangle the rules test, with
+// its handle back to the hands at hx, hy. Overhead, the head lies across
+// the top of the box; swung forward, it stands upright at its front.
+func drawHammer(f field, x, y, w, h, hx, hy float32, forward, warning bool) {
+	if !forward {
+		top := y + h*0.1
+		drawHandle(f, x+w/2, top+h*0.75, hx, hy)
+		drawSledge(f, x, top, w, h*0.8, true, warning)
+		return
 	}
-	f.line(hx, hy, x+w/2, y+h/2, 1.6, handle)
-	f.roundRect(x, y, w, h, 1, dark)
-	f.roundRect(x+0.6, y+0.6, w-1.2, h-1.6, 0.8, head)
+	left := x + w*0.2
+	drawHandle(f, left+w*0.3, y+h/2, hx, hy)
+	drawSledge(f, left, y, w*0.6, h, false, warning)
 }
 
-// drawPickup draws a hammer waiting to be collected: X..X+9, Y..Y+7.
+// drawHandle draws a hickory handle from the head's collar to the grip,
+// lit along one edge, with a taped grip at the hands' end.
+func drawHandle(f field, x0, y0, x1, y1 float32) {
+	f.line(x0, y0, x1, y1, 2.0, woodDark)
+	f.line(x0, y0, x1, y1, 1.3, handle)
+	f.line(x0-0.25, y0-0.25, x1-0.25, y1-0.25, 0.4, woodLight)
+	gx, gy := x0+(x1-x0)*0.68, y0+(y1-y0)*0.68
+	f.line(gx, gy, x1, y1, 2.2, rgb(0x24242a))
+	for t := float32(0.72); t < 1; t += 0.09 {
+		cx, cy := x0+(x1-x0)*t, y0+(y1-y0)*t
+		f.circle(cx, cy, 0.55, rgb(0x46464e))
+	}
+}
+
+// drawSledge draws a sledgehammer head in the box x, y, w, h: a forged
+// steel block shaded round its length like a bar lit from above, with
+// bevelled striking faces at both ends and a collar where the handle
+// enters. across says the head lies along x; otherwise it stands along y.
+func drawSledge(f field, x, y, w, h float32, across, warning bool) {
+	base := hammerSteel
+	if warning {
+		base = warnColour
+	}
+	white, black := rgb(0xffffff), rgb(0x101018)
+	outline := mix(base, black, 0.6)
+	bands := []color.RGBA{mix(base, white, 0.7), mix(base, white, 0.35), base, mix(base, black, 0.2), mix(base, black, 0.38)}
+	face, faceLight := mix(base, black, 0.15), mix(base, white, 0.5)
+	// Local coordinates: u along the head, v across it.
+	length, thick := w, h
+	if !across {
+		length, thick = h, w
+	}
+	at := func(u, v float32) (float32, float32) {
+		if across {
+			return x + u, y + v
+		}
+		return x + v, y + u
+	}
+	quad := func(c color.Color, u0, v0, u1, v1 float32) {
+		ax, ay := at(u0, v0)
+		bx, by := at(u1, v0)
+		cx, cy := at(u1, v1)
+		dx, dy := at(u0, v1)
+		f.poly(c, ax, ay, bx, by, cx, cy, dx, dy)
+	}
+	e := min(1.8, length*0.17) // the bevel's depth
+	quad(outline, 0, 0, length, thick)
+	n := float32(len(bands))
+	for i, c := range bands {
+		v0 := 0.4 + (thick-0.8)*float32(i)/n
+		quad(c, e, v0, length-e, v0+(thick-0.8)/n+0.05)
+	}
+	// The striking faces, narrowed by the bevel, lit at their upper edge.
+	for _, end := range [][2]float32{{0.35, e}, {length - 0.35, length - e}} {
+		o, i := end[0], end[1]
+		ax, ay := at(i, 0.4)
+		bx, by := at(i, thick-0.4)
+		cx, cy := at(o, thick-1)
+		dx, dy := at(o, 1)
+		f.poly(face, ax, ay, bx, by, cx, cy, dx, dy)
+		lx, ly := at(o, 1)
+		mx, my := at(i, 0.4)
+		f.line(lx, ly, mx, my, 0.45, faceLight)
+	}
+	// A glint on the top band, and the collar's wedge on the handle side.
+	gx, gy := at(length*0.3, thick*0.18)
+	f.ellipse(gx, gy, 0.9, 0.35, white)
+	quad(outline, length/2-1.6, thick-1.1, length/2+1.6, thick)
+	quad(mix(base, black, 0.3), length/2-1.1, thick-0.9, length/2+1.1, thick-0.2)
+}
+
+// drawPickup draws a sledgehammer waiting to be collected, standing on
+// its head's end: X..X+9, Y..Y+7.
 func drawPickup(f field, x, y float32) {
-	f.rect(x+4, y+3, 2, 5, handle)
-	f.roundRect(x, y, 10, 4, 1, hammerDark)
-	f.roundRect(x+0.5, y+0.4, 9, 2.6, 0.8, hammerSteel)
+	f.ellipse(x+5, y+8, 5, 0.8, shadowColour)
+	drawHandle(f, x+5, y+3.5, x+5, y+8)
+	drawSledge(f, x, y, 10, 4.2, true, false)
 }
 
 // drawRivet draws a removable rivet as a bolt head on its support.
