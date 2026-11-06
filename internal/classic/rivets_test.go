@@ -3,6 +3,8 @@ package classic
 import (
 	"fmt"
 	"testing"
+
+	"github.com/comprofix/barreljumper/internal/scene/scenetest"
 )
 
 func newTestStage(family int) *stage {
@@ -157,5 +159,21 @@ func TestClassicScheduleProgression(t *testing.T) {
 	want := "[1:0 1:3 2:0 2:3 3:0 3:3]"
 	if fmt.Sprint(got) != want {
 		t.Errorf("screens %v, want %s", got, want)
+	}
+}
+
+func TestStartScreen(t *testing.T) {
+	h := scenetest.New(t, 1)
+	h.Ctx.StartLevel, h.Ctx.StartScreen = 1, 2
+	if p := NewPlay(h.Ctx, skillByID(t, "arcade")); p.stage.family != rivetsFamily || p.level != 0 {
+		t.Errorf("-level 1 -screen 2 started family %d on level %d", p.stage.family, p.level+1)
+	}
+	h.Ctx.StartLevel, h.Ctx.StartScreen = 4, 3
+	if p := NewPlay(h.Ctx, skillByID(t, "arcade")); p.stage.family != barrelsFamily || p.index != 2 {
+		t.Errorf("-level 4 -screen 3 started family %d at index %d", p.stage.family, p.index)
+	}
+	h.Ctx.StartLevel, h.Ctx.StartScreen = 1, 9
+	if p := NewPlay(h.Ctx, skillByID(t, "arcade")); p.stage.family != rivetsFamily {
+		t.Errorf("a screen past the row started family %d, want the last, Rivets", p.stage.family)
 	}
 }

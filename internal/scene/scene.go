@@ -164,6 +164,10 @@ type Context struct {
 	// its play scene there. A game started later is a test: it goes on no
 	// high score table.
 	StartLevel int
+	// StartScreen is the screen within the start level that new games
+	// start on; 0 or 1 is the first. The -screen flag sets it, for
+	// testing, and such games are tests too.
+	StartScreen int
 
 	pixel           *ebiten.Image // the pixel look's screen, for scenes enlarged in the smooth look; a render cache
 	next            Scene
@@ -175,7 +179,7 @@ type Context struct {
 
 // Testing reports whether games are started for testing, part way in:
 // they go on no high score table.
-func (c *Context) Testing() bool { return c.StartLevel > 1 }
+func (c *Context) Testing() bool { return c.StartLevel > 1 || c.StartScreen > 1 }
 
 // Switch asks the manager to fade to s at the end of this tick.
 func (c *Context) Switch(s Scene) { c.next, c.cut = s, false }

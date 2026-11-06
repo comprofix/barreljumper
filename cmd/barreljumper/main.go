@@ -20,6 +20,7 @@ import (
 func main() {
 	seed := flag.Uint64("seed", 0, "random seed, for repeatable runs (0 picks one from the clock)")
 	level := flag.Int("level", 1, "start new games on this level, for testing; such games keep no high scores")
+	screen := flag.Int("screen", 1, "start new games on this screen of the level, for testing; such games keep no high scores")
 	flag.Parse()
 	if *seed == 0 {
 		*seed = uint64(time.Now().UnixNano())
@@ -68,7 +69,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	g.StartAt(*level)
+	g.StartAt(*level, *screen)
 	if err := ebiten.RunGame(g); err != nil {
 		log.Fatal(err)
 	}

@@ -59,6 +59,10 @@ func NewPlay(ctx *scene.Context, skill config.Skill) *Play {
 	if ctx != nil && ctx.StartLevel > 1 {
 		p.level = ctx.StartLevel - 1
 	}
+	if ctx != nil && ctx.StartScreen > 1 {
+		// Past the row's end, the last screen.
+		p.index = min(ctx.StartScreen, len(classicSchedule[p.level%5])) - 1
+	}
 	p.beginTurn()
 	return p
 }

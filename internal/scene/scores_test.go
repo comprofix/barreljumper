@@ -118,6 +118,10 @@ func TestTestGamesMakeNoTable(t *testing.T) {
 	if _, ok := AfterGame(h.ctx, config.Skills[0], 5000).(*HighScoreTable); !ok {
 		t.Error("a game started part way was offered the table")
 	}
+	h.ctx.StartLevel, h.ctx.StartScreen = 1, 2
+	if _, ok := AfterGame(h.ctx, config.Skills[0], 5000).(*HighScoreTable); !ok {
+		t.Error("a game started on a later screen was offered the table")
+	}
 }
 
 // TestScoresByMouse: the wheel turns letters and tables, and a click moves
