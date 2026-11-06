@@ -11,11 +11,13 @@ type Controls struct {
 	Jump                 bool
 }
 
-// Movement is the headless Barrels movement prototype. Coordinates are in
-// the original logical grid. Advance receives input at the skeleton's 60 Hz.
+// Movement is the Barrels player. Coordinates are in the original logical
+// grid. The stage calls step once per eligible reference update.
 type Movement struct {
 	X, Y                            int
 	Dead                            bool
+	Facing                          int  // 1 right, -1 left
+	Hammer                          bool // blocks takeoff and ladders; narrows walking
 	surfaces                        []girder
 	grounded                        bool
 	ladder                          *ladder
@@ -25,42 +27,31 @@ type Movement struct {
 	jumpDisplacement, jumpDirection int
 	jumpStep                        int
 	fall                            walkingFall
-	clockPhase                      int
-	counter                         uint16
+	// Jump award hooks for the stage: apex is set on the update that turns
+	// the jump down, landed on a normal landing. jumpCount is the award count.
+	apex, landed bool
+	jumpCount    int
 }
 
 func NewMovement() *Movement {
 	return &Movement{
-		X: 40, Y: 176, grounded: true, surfaces: barrelsGirders(),
-	}
-}
-
-// Advance samples the nominal PIT clock without tying simulation to Draw.
-func (m *Movement) Advance(c Controls, arcade bool) {
-	const pitFrequency = 1193182
-	const divisorPerFrame = 16384 * 60
-	m.clockPhase += pitFrequency
-	for m.clockPhase >= divisorPerFrame {
-		m.clockPhase -= divisorPerFrame
-		m.counter++
-		if autoUpdateEligible(m.counter) {
-			m.step(c, arcade)
-		}
+		X: 40, Y: 176, Facing: 1, grounded: true, surfaces: barrelsGirders(),
 	}
 }
 
 func (m *Movement) step(c Controls, arcade bool) {
+	m.apex, m.landed = false, false
 	if m.Dead {
 		return
 	}
 	// DESIGN's M1 comparison establishes takeoff before ladder attachment.
-	if m.jump.takeoff(c.Jump, m.grounded && !m.jumping && m.ladder == nil) {
+	if m.jump.takeoff(c.Jump, m.grounded && !m.jumping && m.ladder == nil && !m.Hammer) {
 		m.jumping, m.grounded = true, false
 		m.jumpDisplacement, m.jumpDirection, m.jumpStep = 0, c.Horizontal, -1
-		m.movePhase = 0
+		m.movePhase, m.jumpCount = 0, 0
 		m.fall = walkingFall{}
 	}
-	if !m.jumping && m.ladder == nil && c.Vertical != 0 {
+	if !m.jumping && m.ladder == nil && c.Vertical != 0 && !m.Hammer {
 		for i := range barrelsLadders {
 			l := &barrelsLadders[i]
 			if x, ok := l.attach(m.X, m.Y+ladderFoot, c.Vertical < 0); ok {
@@ -79,8 +70,12 @@ func (m *Movement) step(c Controls, arcade bool) {
 		m.stepJump()
 		return
 	} else if !m.falling && c.Horizontal != 0 {
-		m.X = groundX(m.X, c.Horizontal, arcade && m.movePhase == 0, false)
+		m.Facing = c.Horizontal
+		m.X = groundX(m.X, c.Horizontal, arcade && m.movePhase == 0, m.Hammer)
 		m.movePhase = (m.movePhase + 1) % 6
+	}
+	if m.Hammer && !m.falling {
+		m.X = min(max(m.X, 9), 236)
 	}
 	// Walking descent precedes contact, including the landing call. A lower
 	// girder step can therefore suppress walking for one recovery call.
@@ -126,6 +121,7 @@ func (m *Movement) stepJump() {
 		m.jumpDisplacement += m.jumpStep
 		if m.jumpDisplacement <= -16 {
 			m.jumpStep = 1
+			m.apex = true
 		}
 		if m.jumpDisplacement == 14 && m.jumpStep > 0 {
 			m.jumpStep = 2
@@ -142,6 +138,7 @@ func (m *Movement) stepJump() {
 			} else {
 				m.jumpDirection = -1
 			}
+			m.Facing = m.jumpDirection
 		} else {
 			m.jumpDirection = 0
 		}
@@ -156,7 +153,7 @@ func (m *Movement) stepJump() {
 				m.Dead = m.jumpDisplacement > 16
 				m.falling = false
 			} else {
-				m.jumping = false
+				m.jumping, m.landed = false, true
 			}
 			m.jumpDisplacement = 0
 			return

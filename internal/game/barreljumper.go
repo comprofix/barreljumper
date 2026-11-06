@@ -7,7 +7,7 @@ import (
 )
 
 func init() {
-	content.NewPlay = func(_ *scene.Context, _ config.Skill) scene.Scene {
-		return classic.NewPrototype()
+	content.NewPlay = func(ctx *scene.Context, skill config.Skill) scene.Scene {
+		return classic.NewPlay(ctx, skill)
 	}
 }
