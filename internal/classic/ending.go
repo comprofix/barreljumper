@@ -565,9 +565,14 @@ func (p *Play) drawFloorCard(f field) {
 
 // drawWorkerIcon draws the worker standing, facing right, with the field's
 // origin at the centre of his hard hat's top.
-func drawWorkerIcon(f field) {
+func drawWorkerIcon(f field) { drawWorkerHop(f, 0) }
+
+// drawWorkerHop draws the worker icon lifted off the ground, his shadow
+// staying where he stood.
+func drawWorkerHop(f field, lift float32) {
 	at := func(dx float32) float32 { return dx }
-	f.ellipse(0, 16, 6, 1, shadowColour)
+	f.ellipse(0, 16, 6-lift/6, 1, shadowColour)
+	f.top -= lift * f.scale
 	drawLeg(f, -1, 10.4, 4, true)
 	drawBoot(f, -0.7, 14, 1)
 	drawLeg(f, 1, 10.4, 4, false)

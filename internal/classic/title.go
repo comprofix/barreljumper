@@ -89,11 +89,26 @@ func drawTitleSite(f field, tick int64) {
 	}
 	drawThrower(f, thrower{x: 240, y: 76, pose: pose})
 	drawCaptive(f, 290, 91, tick)
-	// The worker looks up at them from the lower girder, a barrel rolling
-	// along toward him.
-	drawWorkerIcon(field{f.dst, f.left + 112*f.scale, f.top + 126*f.scale, f.scale})
-	roll := int(tick/3) % 150
-	drawBarrel(f, barrel{x: 226 - roll, y: 132, frame: roll / 2})
+	// The worker on the lower girder hops each barrel that rolls by.
+	roll := int(tick) % 190
+	bx := 226 - roll
+	drawWorkerHop(field{f.dst, f.left + titleWorkerX*f.scale, f.top + 126*f.scale, f.scale}, titleHop(bx))
+	drawBarrel(f, barrel{x: bx, y: 132, frame: roll / 3})
+}
+
+// titleWorkerX is the centre of the title's worker.
+const titleWorkerX = 112
+
+// titleHop is how high the title's worker is off the girder with the
+// barrel at bx: he takes off as it closes in and lands once it is past.
+func titleHop(bx int) float32 {
+	const before, after = 26, 26 // the barrel's centre from his, in pixels
+	d := float32(bx + 7 - titleWorkerX)
+	if d > before || d < -after {
+		return 0
+	}
+	t := (before - d) / (before + after)
+	return 16 * sin(t*3.1416)
 }
 
 // drawLogo draws word in steel blocks centred across the title, with its
