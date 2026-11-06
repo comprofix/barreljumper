@@ -1,0 +1,450 @@
+package classic
+
+import (
+	"fmt"
+	"math"
+
+	"github.com/comprofix/barreljumper/internal/gfx"
+	"github.com/comprofix/barreljumper/internal/scene"
+)
+
+// The opening, floor card and screen endings (DESIGN section 6, Screen
+// endings, floor card and opening). Their lengths follow the reference
+// (section 4, Screen endings and the height screen); the scenes are the
+// rebuild's own. Times are counter ticks from the phase's start.
+
+// Carry-off: the crane hook comes down to the thrower, he pulls the
+// captive to him, and the crane hoists them both off the top.
+const (
+	hookTicks = 60
+	grabTicks = 50
+)
+
+// Opening: the crane lowers the Barrels rows into place above the ground,
+// then hoists the thrower and the captive to the top, where she walks to
+// her platform and he beats his chest.
+const (
+	openRowEvery = 70
+	openRowTicks = 90
+	openRows     = 6
+	openLadders  = 460 // ladders, drum and hammers appear
+	openHook     = 480 // the hook comes down to the thrower
+	openHoist    = 520 // and lifts him and the captive
+	openTop      = 720 // they reach the top
+	openPlaced   = 790 // she is on her platform
+)
+
+// Rivets ending: the inner floors drop into a pile, the thrower's own floor
+// last; he lands on the pile stunned; the top floor is lowered to meet the
+// worker, who stands with the captive under a heart.
+const (
+	rivetsHisFloor = 220
+	rivetsLower    = 500
+	rivetsLowered  = 590
+	rivetsHeart    = 600
+	rivetsDrop     = 42 // how far the top floor comes down, to y 66
+	fallGravity    = 0.08
+)
+
+// The opening and Rivets thrower stands at the bottom of Barrels.
+var openThrower = point{60, 162}
+
+func clamp01(v float32) float32 { return max(0, min(1, v)) }
+
+func lerp(a, b, t float32) float32 { return a + (b-a)*t }
+
+// smooth eases t in and out.
+func smooth(t float32) float32 {
+	t = clamp01(t)
+	return t * t * (3 - 2*t)
+}
+
+// span is how far t is through [from, from+length], clamped.
+func span(t, from, length int) float32 {
+	return clamp01(float32(t-from) / float32(length))
+}
+
+// openRowStart is when row r, above the ground row, starts down.
+func openRowStart(r int) int { return (r - 1) * openRowEvery }
+
+func openRowLanded(r int) int { return openRowStart(r) + openRowTicks }
+
+func openingSounds(t int) sound {
+	var s sound
+	for r := 1; r < openRows; r++ {
+		if t == openRowStart(r) {
+			s |= soundWinch
+		}
+		if t == openRowLanded(r) {
+			s |= soundClank
+		}
+	}
+	if t == openHoist {
+		s |= soundWinch
+	}
+	if t == openPlaced {
+		s |= soundClank
+	}
+	return s
+}
+
+func rivetsSounds(t int) sound {
+	switch t {
+	case rivetsHisFloor:
+		return soundRumble
+	case rivetsHisFloor + fallTicks(32, 162-32):
+		return soundThud
+	case rivetsLower:
+		return soundWinch
+	case rivetsLowered:
+		return soundClank
+	case rivetsHeart:
+		return soundPoints
+	}
+	return 0
+}
+
+// fallTicks is how long a fall of distance takes under fallGravity.
+func fallTicks(_ int, distance int) int {
+	return int(math.Ceil(math.Sqrt(2 * float64(distance) / fallGravity)))
+}
+
+// fall is a drop from y to rest after t ticks.
+func fall(from, rest float32, t int) float32 {
+	if t <= 0 {
+		return from
+	}
+	return min(from+0.5*fallGravity*float32(t*t), rest)
+}
+
+// captiveAt is where the captive stands on each family's screen.
+func captiveAt(family int) (float32, float32) {
+	switch family {
+	case rivetsFamily:
+		return 126, 7
+	case elevatorsFamily:
+		return 146, 7
+	case conveyorFamily:
+		return 146, 5
+	}
+	return 126, 6
+}
+
+// carried is the thrower, captive and hook during the carry-off.
+func (p *Play) carried() (t thrower, gx, gy, hx, hy float32, grabbed bool) {
+	t = p.stage.thrower
+	t.holding, t.taunting = false, false
+	t.pose = throwerTauntB
+	cx, cy := captiveAt(p.stage.family)
+	handX, handY := float32(t.x)+37, float32(t.y)+1.5
+	tick := p.timer
+	hy = lerp(-12, handY, smooth(span(tick, 0, hookTicks)))
+	g := smooth(span(tick, hookTicks, grabTicks))
+	gx, gy = lerp(cx, float32(t.x)+38, g), lerp(cy, float32(t.y)+10, g)
+	grabbed = tick >= hookTicks+grabTicks
+	if grabbed {
+		up := span(tick, hookTicks+grabTicks, carryTicks-hookTicks-grabTicks)
+		lift := up * up * (handY + 70)
+		t.y -= int(lift)
+		gy -= lift
+		hy = handY - lift
+	}
+	return t, gx, gy, handX, hy, grabbed
+}
+
+// drawHook draws the crane hook on its cable from the top of the field.
+func drawHook(f field, x, y float32) {
+	f.line(x, -20, x, y-4, 0.8, cable)
+	f.roundRect(x-2.2, y-5.5, 4.4, 3, 0.8, hazardYellow)
+	f.rect(x-2.2, y-4.4, 4.4, 0.7, hazardBlack)
+	f.rect(x-0.4, y-2.5, 0.8, 2.2, hammerSteel)
+	f.line(x, y-0.4, x+1.4, y+1.2, 0.8, hammerSteel)
+	f.line(x+1.4, y+1.2, x-0.6, y+2.2, 0.8, hammerSteel)
+	f.line(x-0.6, y+2.2, x-1.2, y+1.2, 0.8, hammerSteel)
+}
+
+var heartColour = rgb(0xff4f7a)
+
+// drawHeart draws a heart centred on x with its top at y, split when broken.
+func drawHeart(f field, x, y float32, broken bool) {
+	c, light := heartColour, mix(heartColour, rgb(0xffffff), 0.45)
+	if !broken {
+		f.circle(x-1.5, y+1.6, 1.8, c)
+		f.circle(x+1.5, y+1.6, 1.8, c)
+		f.poly(c, x-3.2, y+2, x+3.2, y+2, x, y+6)
+		f.circle(x-1.8, y+1.1, 0.6, light)
+		return
+	}
+	c, light = mix(c, eyeColour, 0.3), mix(c, rgb(0xffffff), 0.2)
+	l, r := x-0.8, x+0.8
+	f.circle(l-1.5, y+1.8, 1.8, c)
+	f.poly(c, l-3.2, y+2.2, l, y+1.4, l+0.6, y+3, l, y+4.4, l, y+6.2)
+	f.circle(r+1.5, y+1.4, 1.8, c)
+	f.poly(c, r+3.2, y+1.8, r, y+1, r+0.6, y+2.6, r, y+4, r, y+5.8)
+	f.circle(l-1.8, y+1.3, 0.6, light)
+}
+
+// drawStars circles three stars about x, y.
+func drawStars(f field, x, y float32, tick int) {
+	spin := float32(tick) * 0.08
+	for i := range 3 {
+		a := spin + float32(i)*2.094
+		sx, sy := x+4.5*cos(a), y+1.4*sin(a)
+		r := float32(1.3)
+		f.poly(hazardYellow, sx, sy-r, sx+0.35*r, sy-0.35*r, sx+r, sy, sx+0.35*r, sy+0.35*r,
+			sx, sy+r, sx-0.35*r, sy+0.35*r, sx-r, sy, sx-0.35*r, sy-0.35*r)
+		f.circle(sx, sy, 0.3, rgb(0xffffff))
+	}
+}
+
+// barrelsRow is the row, bottom first, of Barrels girder i.
+func barrelsRow(i int) int {
+	if i < 13 {
+		return 0
+	}
+	return min((i-13)/12+1, openRows-1)
+}
+
+// drawOpening draws the opening scene on the Barrels screen.
+func (p *Play) drawOpening(f field, tick int64) {
+	s, t := p.stage, p.timer
+	if t >= openLadders {
+		for _, l := range s.layout.reserved {
+			drawLadder(f, l, true)
+		}
+		for _, l := range s.ladders {
+			drawLadder(f, l, false)
+		}
+	}
+	// Each row comes down on the crane, the cable at the field's centre.
+	for r := range openRows {
+		start := openRowStart(r)
+		if t < start {
+			continue
+		}
+		drop := float32(0)
+		if r > 0 {
+			drop = (1 - smooth(span(t, start, openRowTicks))) * -210
+		}
+		for i, g := range s.girders {
+			if barrelsRow(i) == r {
+				drawBeam(f, float32(g.left), float32(g.y)+drop, float32(g.right-g.left))
+			}
+		}
+		if r == openRows-1 {
+			drawBeam(f, float32(barrelsGoal.left), float32(barrelsGoal.y)+drop, 50)
+		}
+		if drop < 0 {
+			y := float32(s.girders[firstOfRow(r)].y) + drop
+			f.line(110, y, 130, -20, 0.6, cable)
+			f.line(150, y, 130, -20, 0.6, cable)
+			drawHook(f, 130, y-2)
+		}
+	}
+	if t >= openLadders {
+		for _, h := range s.pickups {
+			drawPickup(f, float32(h.x), float32(h.y))
+		}
+		drawDrum(f, s.oil, tick)
+	}
+	// The thrower and captive, hoisted to the top.
+	th := thrower{x: openThrower.x, y: openThrower.y, pose: throwerReady}
+	if (t/40)%2 == 1 && t < openHook {
+		th.pose = throwerTauntA
+	}
+	gx, gy := float32(th.x)+42, float32(th.y)+15
+	handX := float32(th.x) + 37
+	hookY := float32(-12)
+	if t >= openHook {
+		th.pose = throwerTauntB
+		hookY = lerp(-12, float32(th.y)+1.5, smooth(span(t, openHook, openHoist-openHook)))
+		gx, gy = float32(th.x)+38, float32(th.y)+10
+	}
+	if t >= openHoist {
+		up := smooth(span(t, openHoist, openTop-openHoist))
+		th.x = int(lerp(float32(openThrower.x), float32(s.layout.thrower.x), up))
+		th.y = int(lerp(float32(openThrower.y), float32(s.layout.thrower.y), up))
+		handX = float32(th.x) + 37
+		hookY = float32(th.y) + 1.5
+		gx, gy = float32(th.x)+38, float32(th.y)+10
+	}
+	if t >= openTop {
+		hookY = lerp(float32(th.y)+1.5, -12, smooth(span(t, openTop, 60)))
+		walk := smooth(span(t, openTop, openPlaced-openTop))
+		cx, cy := captiveAt(barrelsFamily)
+		gx, gy = lerp(gx, cx, walk), lerp(gy, cy, walk)
+		th.pose = throwerReady
+	}
+	if t >= openPlaced {
+		th.pose = throwerTauntA + (t/12)%2
+	}
+	drawThrower(f, th)
+	drawCaptive(f, gx, gy, tick)
+	if hookY > -12 {
+		drawHook(f, handX, hookY)
+	}
+}
+
+func firstOfRow(r int) int {
+	if r == 0 {
+		return 0
+	}
+	return 13 + (r-1)*12
+}
+
+// rivetFaller reports whether girder g drops in the Rivets ending, and its
+// row, bottom first.
+func rivetFaller(g girder) (int, bool) {
+	if g.left < 70 || g.left >= 190 {
+		return 0, false
+	}
+	for r, y := range rivetRows {
+		if g.y == y {
+			return r, true
+		}
+	}
+	return 0, false
+}
+
+// rivetsFall is when a row starts to drop.
+func rivetsFall(r int) int {
+	if r == len(rivetRows)-1 {
+		return rivetsHisFloor
+	}
+	return r * 6
+}
+
+// meet places the worker beside the lowered captive for the Rivets ending.
+func (s *stage) meet() {
+	m := s.player
+	cx, cy := captiveAt(rivetsFamily)
+	m.X, m.Y, m.Facing = int(cx)-16, int(cy)+rivetsDrop-1, 1
+	m.ladder, m.jumping, m.falling, m.grounded, m.Dead = nil, false, false, true, false
+	s.hammer.held = false
+}
+
+// drawRivetsEnd draws the Rivets ending.
+func (p *Play) drawRivetsEnd(f field, tick int64) {
+	s, t := p.stage, p.timer
+	for _, l := range s.ladders {
+		if l.x < 70 || l.x >= 190 {
+			drawLadder(f, l, false)
+		}
+	}
+	lower := smooth(span(t, rivetsLower, rivetsLowered-rivetsLower)) * rivetsDrop
+	for _, g := range s.girders {
+		x, w := float32(g.left), float32(g.right-g.left)
+		if r, ok := rivetFaller(g); ok {
+			rest := float32(186 - 8*r)
+			drawBeam(f, x, fall(float32(g.y), rest, t-rivetsFall(r)), w)
+			continue
+		}
+		if g.y == 24 {
+			drawBeam(f, x, float32(g.y)+lower, w)
+			continue
+		}
+		drawGirder(f, g)
+	}
+	cx, cy := captiveAt(rivetsFamily)
+	drawCaptive(f, cx, cy+lower, tick)
+	// The thrower beats his chest, falls with his floor and lands stunned.
+	th := s.thrower
+	th.holding, th.taunting = false, false
+	th.pose = throwerTauntA + (t/14)%2
+	rest := float32(162 - 32)
+	if t >= rivetsHisFloor {
+		y := fall(float32(th.y), rest, t-rivetsHisFloor)
+		th.y = int(y)
+		th.pose = throwerTauntA + (t/4)%2
+		if y >= rest {
+			th.pose = throwerReady
+		}
+	}
+	drawThrower(f, th)
+	if float32(th.y) >= rest {
+		drawStars(f, float32(th.x)+20, float32(th.y)-1, t)
+	}
+	if t >= rivetsLowered {
+		p.drawPlayer(f)
+	}
+	if t >= rivetsHeart {
+		drawHeart(f, cx-1, cy+lower-8, false)
+	}
+}
+
+// drawFloorCard draws the card before a screen's play: the building with a
+// floor for each screen of the level, the floors climbed lit, the worker on
+// the current one, and the thrower with the captive on the roof.
+func (p *Play) drawFloorCard(f field) {
+	n := len(classicSchedule[p.level%5])
+	h := min(float32(30), 130/float32(n))
+	base := float32(186)
+	left, width := float32(80), float32(100)
+	drawBeam(f, 40, base, 180)
+	top := base - h*float32(n)
+	for k := range n {
+		y := base - h*float32(k+1)
+		// Window panels between the columns, lit once climbed.
+		glass := mix(skylineNear, skyTop, 0.3)
+		switch {
+		case k < p.index:
+			glass = mix(windowLight, skylineNear, 0.55)
+		case k == p.index:
+			glass = windowLight
+		}
+		for wx := left + 8; wx < left+width-8; wx += 14 {
+			f.rect(wx, y+7, 10, h-9, glass)
+			f.rect(wx, y+7, 10, 1, mix(glass, rgb(0xffffff), 0.3))
+		}
+		f.rect(left+2, y+7, 4, h-7, steelDark)
+		f.rect(left+width-6, y+7, 4, h-7, steelDark)
+		f.rect(left+2, y+7, 1, h-7, steel)
+		f.rect(left+width-6, y+7, 1, h-7, steel)
+		drawBeam(f, left, y, width)
+		if k == p.index {
+			// The worker on his floor, and a marker beside it.
+			drawWorkerIcon(field{f.dst, f.left + (left+width/2)*f.scale, f.top + (y+7)*f.scale, f.scale * min(1, (h-8)/16)})
+			if p.timer/18%2 == 0 {
+				ay := y + h/2 + 3
+				f.poly(hazardYellow, left+width+10, ay-3, left+width+10, ay+3, left+width+5, ay)
+			}
+		}
+	}
+	// The thrower and captive on the roof, at half size.
+	roof := field{f.dst, f.left + (left+18)*f.scale, f.top + (top-16)*f.scale, f.scale * 0.5}
+	drawThrower(roof, thrower{pose: throwerTauntA + p.timer/16%2})
+	roof.left += 46 * roof.scale
+	roof.top += 15 * roof.scale
+	drawCaptive(roof, 0, 0, int64(p.timer))
+}
+
+// drawWorkerIcon draws the worker standing, facing right, with the field's
+// origin at the centre of his hard hat's top.
+func drawWorkerIcon(f field) {
+	at := func(dx float32) float32 { return dx }
+	f.ellipse(0, 16, 6, 1, shadowColour)
+	drawLeg(f, -1, 10.4, 4, true)
+	drawBoot(f, -0.7, 14, 1)
+	drawLeg(f, 1, 10.4, 4, false)
+	drawBoot(f, 1.3, 14, 1)
+	f.rect(-3.9, 10, 7.8, 0.9, beltColour)
+	drawVest(f, 0, 0, at, vestOrange, true)
+	drawLimb(f, 3, 6, 4.4, 9.6, false)
+	drawHead(f, 0, 0, at, false)
+}
+
+// drawCardText writes the floor card's lines: the player, the floor and
+// its height.
+func (p *Play) drawCardText(ctx *scene.Context, f field) {
+	small, large, sc := ctx.Fonts.Small, ctx.Fonts.Large, ctx.Scheme
+	if large == nil {
+		large = small
+	}
+	centre := func(font gfx.Font, s string, y float32, c int) {
+		x := int(f.left+130*f.scale) - font.Width(s)/2
+		font.DrawShadowed(f.dst, s, x, int(f.top+y*f.scale), c, sc.Shadow)
+	}
+	n := len(classicSchedule[p.level%5])
+	centre(large, fmt.Sprint("PLAYER ", p.current+1), 10, sc.Title)
+	centre(small, fmt.Sprintf("FLOOR %d OF %d   %d M UP", p.index+1, n, 25*(p.index+1)), 30, sc.Text)
+}

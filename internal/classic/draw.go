@@ -41,8 +41,24 @@ func (p *Play) Draw(ctx *scene.Context, dst *ebiten.Image) {
 	dst.Fill(sidebarColour)
 	f := newField(dst)
 	drawBackdrop(f)
+	switch p.phase {
+	case floorCard:
+		p.drawFloorCard(f)
+	case opening:
+		p.drawOpening(f, ctx.Tick)
+	case rivetsDone:
+		p.drawRivetsEnd(f, ctx.Tick)
+	default:
+		p.drawScreen(f, ctx.Tick)
+	}
+	drawSidebar(f)
+	p.drawText(ctx, f)
+}
+
+// drawScreen draws a screen in play, and its heart and carry-off after a
+// clear.
+func (p *Play) drawScreen(f field, tick int64) {
 	s := p.stage
-	tick := ctx.Tick
 	if s.family == elevatorsFamily {
 		drawCables(f)
 	}
@@ -67,21 +83,17 @@ func (p *Play) Draw(ctx *scene.Context, dst *ebiten.Image) {
 			drawBelt(f, b, tick)
 		}
 	}
-	switch s.family {
-	case barrelsFamily:
+	if s.family == barrelsFamily {
 		drawGirder(f, girder{barrelsGoal.left, barrelsGoal.left + 50, barrelsGoal.y})
-		drawCaptive(f, 126, 6, tick)
-	case rivetsFamily:
-		drawCaptive(f, 126, 7, tick)
-		for _, r := range s.rivets {
-			if !r.removed {
-				drawRivet(f, float32(r.x), float32(r.y))
-			}
+	}
+	cx, cy := captiveAt(s.family)
+	if p.phase != carryOff {
+		drawCaptive(f, cx, cy, tick)
+	}
+	for _, r := range s.rivets {
+		if !r.removed {
+			drawRivet(f, float32(r.x), float32(r.y))
 		}
-	case elevatorsFamily:
-		drawCaptive(f, 146, 7, tick)
-	case conveyorFamily:
-		drawCaptive(f, 146, 5, tick)
 	}
 	for i, it := range s.items {
 		if it.active {
@@ -96,7 +108,18 @@ func (p *Play) Draw(ctx *scene.Context, dst *ebiten.Image) {
 	if s.oil.present {
 		drawDrum(f, s.oil, tick)
 	}
-	drawThrower(f, s.thrower)
+	if p.phase == carryOff {
+		th, gx, gy, hx, hy, grabbed := p.carried()
+		drawThrower(f, th)
+		drawCaptive(f, gx, gy, tick)
+		drawHook(f, hx, hy)
+		drawHeart(f, cx+16, cy+1, grabbed)
+	} else {
+		drawThrower(f, s.thrower)
+	}
+	if p.phase == cheering {
+		drawHeart(f, cx+16, cy+1, false)
+	}
 	for _, p := range s.pies {
 		if p.active {
 			drawPie(f, float32(p.x), float32(p.y))
@@ -121,8 +144,6 @@ func (p *Play) Draw(ctx *scene.Context, dst *ebiten.Image) {
 	if s.smash.active {
 		drawSmash(f, float32(s.smash.x), float32(s.smash.y), s.smash.frame)
 	}
-	drawSidebar(f)
-	p.drawText(ctx, f)
 }
 
 // drawSidebar frames the score panel right of the field.
@@ -390,8 +411,8 @@ func (p *Play) drawText(ctx *scene.Context, f field) {
 	}
 	message := ""
 	switch p.phase {
-	case clearing:
-		message = "STAGE CLEAR"
+	case floorCard:
+		p.drawCardText(ctx, f)
 	case playerOut:
 		message = fmt.Sprint("GAME OVER PLAYER ", p.current+1)
 	case gameOver:

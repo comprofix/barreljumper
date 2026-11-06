@@ -11,20 +11,28 @@ import (
 const (
 	playing = iota
 	dying
-	clearing
 	playerOut // one player of two has no reserve left
 	gameOver
+	opening    // the game's opening scene
+	floorCard  // the floor card before a screen's play
+	cheering   // the heart by the captive after a clear
+	carryOff   // the thrower hoisted away with the captive
+	rivetsDone // the Rivets ending
 )
 
 // Presentation timing in reference counter ticks (about 72.8 per second).
 // The death times follow the reference death sequence with sound muted.
 const (
-	deathFreezeTicks = 73  // 1.0 s still
-	deathSpinTicks   = 140 // 20 frames of 7 ticks
-	deathHoldTicks   = 146 // 2.0 s
-	clearTicks       = 109 // 1.5 s
-	gameOverTicks    = 218 // 3.0 s
-	playerOutTicks   = 218 // 3.0 s, the "Game Over Player n" message
+	deathFreezeTicks = 73   // 1.0 s still
+	deathSpinTicks   = 140  // 20 frames of 7 ticks
+	deathHoldTicks   = 146  // 2.0 s
+	heartTicks       = 314  // 4.31 s, the heart after a clear
+	carryTicks       = 305  // 4.19 s, the captive carried off
+	cardTicks        = 223  // 3.07 s, the floor card
+	rivetsEndTicks   = 1063 // 14.6 s, the Rivets ending
+	openingTicks     = 910  // 12.5 s, the reference opening's length
+	gameOverTicks    = 218  // 3.0 s
+	playerOutTicks   = 218  // 3.0 s, the "Game Over Player n" message
 )
 
 // player is one player's place in the game. Each keeps their own score,
@@ -91,6 +99,9 @@ func NewPlay(ctx *scene.Context, skill config.Skill) *Play {
 	}
 	p.player = &p.players[0]
 	p.beginTurn()
+	if p.family() == barrelsFamily && p.index == 0 {
+		p.phase, p.timer, p.jingle = opening, 0, nil
+	}
 	return p
 }
 
@@ -112,7 +123,7 @@ func (p *Play) beginTurn() {
 
 func (p *Play) enterStage() {
 	p.stage = newStage(p.family(), &p.rng, p.skillWord, p.level, &p.updates)
-	p.phase, p.timer = playing, 0
+	p.phase, p.timer = floorCard, 0
 	p.jingle = startJingle
 }
 
@@ -151,6 +162,9 @@ func (p *Play) Update(ctx *scene.Context) error {
 		return 1
 	}
 	defer p.playSounds(ctx)
+	if p.phase == opening && in.JustPressed(input.Confirm) {
+		p.phase, p.timer, p.jingle = floorCard, 0, startJingle
+	}
 	p.advance(Controls{
 		Horizontal: axis(input.Left, input.Right),
 		Vertical:   axis(input.Up, input.Down),
@@ -191,7 +205,11 @@ func (p *Play) tick(c Controls, eligible bool) {
 			p.phase, p.timer = dying, 0
 			p.sounds |= soundHit
 		case stageCleared:
-			p.phase, p.timer = clearing, 0
+			p.phase, p.timer = cheering, 0
+			if p.stage.family == rivetsFamily {
+				p.phase = rivetsDone
+				p.sounds |= soundRumble
+			}
 			p.jingle = clearJingle
 		}
 	case dying:
@@ -217,10 +235,41 @@ func (p *Play) tick(c Controls, eligible bool) {
 		if p.timer >= playerOutTicks {
 			p.passTurn()
 		}
-	case clearing:
+	case opening:
+		p.timer++
+		p.sounds |= openingSounds(p.timer)
+		if p.timer >= openingTicks {
+			p.phase, p.timer, p.jingle = floorCard, 0, startJingle
+		}
+	case floorCard:
+		p.timer++
+		if p.timer >= cardTicks {
+			p.phase, p.timer = playing, 0
+		}
+	case cheering:
 		p.timer++
 		p.stage.agePopups()
-		if p.timer >= clearTicks {
+		if p.timer >= heartTicks {
+			p.phase, p.timer = carryOff, 0
+		}
+	case carryOff:
+		p.timer++
+		p.stage.agePopups()
+		if p.timer == hookTicks+grabTicks {
+			p.sounds |= soundWinch
+		}
+		if p.timer >= carryTicks {
+			p.nextStage()
+			p.enterStage()
+		}
+	case rivetsDone:
+		p.timer++
+		p.stage.agePopups()
+		p.sounds |= rivetsSounds(p.timer)
+		if p.timer == rivetsLowered {
+			p.stage.meet()
+		}
+		if p.timer >= rivetsEndTicks {
 			p.nextStage()
 			p.enterStage()
 		}

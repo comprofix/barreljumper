@@ -27,7 +27,7 @@ func TestSoundTables(t *testing.T) {
 // TestFootfallsFollowTheStride checks a step sounds each time the drawn
 // stride changes, alternating feet.
 func TestFootfallsFollowTheStride(t *testing.T) {
-	p := NewPlay(nil, skillByID(t, "arcade"))
+	p := toPlay(t, NewPlay(nil, skillByID(t, "arcade")))
 	p.jingle = nil
 	m := p.stage.player
 	var steps []sound
@@ -54,7 +54,7 @@ func TestFootfallsFollowTheStride(t *testing.T) {
 }
 
 func TestGameplaySounds(t *testing.T) {
-	p := NewPlay(nil, skillByID(t, "arcade"))
+	p := toPlay(t, NewPlay(nil, skillByID(t, "arcade")))
 	if p.jingle != startJingle {
 		t.Error("no start jingle on entering a screen")
 	}
@@ -80,13 +80,13 @@ func TestGameplaySounds(t *testing.T) {
 	if p.sounds&(soundPoints|soundSmash) != soundPoints|soundSmash {
 		t.Errorf("sounds %b after an award and a smash", p.sounds)
 	}
-	p = NewPlay(nil, skillByID(t, "arcade"))
+	p = toPlay(t, NewPlay(nil, skillByID(t, "arcade")))
 	p.stage.player.Y = barrelsGoal.y - supportFoot
 	p.tick(Controls{}, false)
 	if p.jingle != clearJingle {
 		t.Error("no clear jingle")
 	}
-	p = NewPlay(nil, skillByID(t, "arcade"))
+	p = toPlay(t, NewPlay(nil, skillByID(t, "arcade")))
 	p.stage.bonus, p.updates = 100, 119
 	p.tick(Controls{}, true)
 	if p.sounds&soundHit == 0 {

@@ -10,13 +10,22 @@ import (
 )
 
 // TestPlayControls drives the scene: walking moves the player, P pauses,
-// Ctrl+R starts a new game and Ctrl+M returns to the menu.
+// Ctrl+R starts a new game and Ctrl+M returns to the menu. Enter skips
+// the opening.
 func TestPlayControls(t *testing.T) {
 	h := scenetest.New(t, 1)
 	sk := skillByID(t, "arcade")
 	h.Start(NewPlay(h.Ctx, sk))
 	h.Ticks(2 * scene.FadeTicks)
 	p := scenetest.Current[*Play](h)
+	if p.phase != opening {
+		t.Fatalf("phase %d at the start, want the opening", p.phase)
+	}
+	h.Press(ebiten.KeyEnter) // skips the opening to the floor card
+	h.Ticks(cardTicks)
+	if p.phase != playing {
+		t.Fatalf("phase %d after the floor card", p.phase)
+	}
 	h.Run(scenetest.Hold(60, ebiten.KeyArrowRight))
 	if p.stage.player.X <= 40 {
 		t.Errorf("holding Right left the player at X %d", p.stage.player.X)

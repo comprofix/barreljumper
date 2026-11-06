@@ -35,6 +35,9 @@ const (
 	soundHit
 	soundSpin
 	soundThud
+	soundWinch  // the crane hoisting
+	soundClank  // a girder set down
+	soundRumble // the Rivets floors dropping
 )
 
 // blip is a square voice that dies away within a tick or two.
@@ -117,6 +120,17 @@ var (
 	thudSound = &audio.Effect{Name: "fall thud", Channel: 3, Priority: 4, Part: audio.Part{
 		Voice: crack, Notes: []audio.Note{{Hz: 300, Dur: audio.Ticks(4)}, {Hz: 150, Dur: audio.Ticks(12)}},
 	}}
+	// winchSound is the crane's ratchet, a rising run of short blips.
+	winchSound = &audio.Effect{Name: "crane winch", Channel: 2, Priority: 2, Part: audio.Part{
+		Voice: blip(audio.Pulse25, 0.3), Notes: sweep(150, 330, 16, 2),
+	}}
+	clankSound = &audio.Effect{Name: "girder clank", Channel: 3, Priority: 2, Part: audio.Part{
+		Voice: crack, Notes: []audio.Note{{Hz: 2000, Dur: audio.Ticks(2)}, {Hz: 700, Dur: audio.Ticks(5)}},
+	}}
+	rumbleSound = &audio.Effect{Name: "floors rumble", Channel: 3, Priority: 4, Part: audio.Part{
+		Voice: audio.Voice{Wave: audio.Noise, Decay: audio.Ticks(40), Release: audio.Ticks(4), Volume: 0.7},
+		Notes: []audio.Note{{Hz: 220, Dur: audio.Ticks(20)}, {Hz: 120, Dur: audio.Ticks(30)}},
+	}}
 )
 
 // Jingles, in the same square voices.
@@ -143,7 +157,8 @@ var (
 var Sounds = audio.Bank{
 	Tunes: []*audio.Tune{startJingle, clearJingle},
 	Effects: []*audio.Effect{stepSound, stepSoundB, climbSound, climbSoundB, jumpSound, landSound,
-		hammerSound, swingSound, smashSound, smashCrack, pointsSound, hitSound, spinSound, thudSound},
+		hammerSound, swingSound, smashSound, smashCrack, pointsSound, hitSound, spinSound, thudSound,
+		winchSound, clankSound, rumbleSound},
 }
 
 // effects maps each event to its effects, least important first, so the
@@ -165,6 +180,9 @@ var effects = []struct {
 	{soundHit, []*audio.Effect{hitSound}},
 	{soundSpin, []*audio.Effect{spinSound}},
 	{soundThud, []*audio.Effect{thudSound}},
+	{soundWinch, []*audio.Effect{winchSound}},
+	{soundClank, []*audio.Effect{clankSound}},
+	{soundRumble, []*audio.Effect{rumbleSound}},
 }
 
 // play plays the effects for the events in set.

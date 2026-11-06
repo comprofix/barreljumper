@@ -10,7 +10,7 @@ func twoPlayers(t *testing.T) *Play {
 	h := scenetest.New(t, 1)
 	h.Ctx.MaxPlayers, h.Ctx.StartLevels = 2, 8
 	h.Ctx.Settings.Game.Players = 2
-	return NewPlay(h.Ctx, skillByID(t, "arcade"))
+	return toPlay(t, NewPlay(h.Ctx, skillByID(t, "arcade")))
 }
 
 // dieNow runs out the bonus and plays the death sequence through.
@@ -24,14 +24,15 @@ func dieNow(t *testing.T, p *Play) {
 	for range deathFreezeTicks + deathSpinTicks + deathHoldTicks {
 		p.tick(Controls{}, true)
 	}
+	if p.phase == floorCard {
+		toPlay(t, p)
+	}
 }
 
-func clearNow(p *Play) {
+func clearNow(t *testing.T, p *Play) {
 	p.stage.player.Y = barrelsGoal.y - supportFoot
 	p.tick(Controls{}, false)
-	for range clearTicks {
-		p.tick(Controls{}, false)
-	}
+	toPlay(t, p)
 }
 
 func TestTwoPlayersTakeTurnsAfterDeaths(t *testing.T) {
@@ -39,7 +40,7 @@ func TestTwoPlayersTakeTurnsAfterDeaths(t *testing.T) {
 	if p.current != 0 || p.players[0].reserves != 2 || p.players[1].reserves != 3 {
 		t.Fatalf("start: current %d, reserves %d and %d", p.current, p.players[0].reserves, p.players[1].reserves)
 	}
-	clearNow(p) // player 1 clears Barrels and keeps the turn
+	clearNow(t, p) // player 1 clears Barrels and keeps the turn
 	if p.current != 0 || p.stage.family != rivetsFamily || p.players[0].score == 0 {
 		t.Fatalf("after a clear: current %d, family %d", p.current, p.stage.family)
 	}
@@ -64,6 +65,7 @@ func TestTwoPlayersOneRunsOut(t *testing.T) {
 	for range playerOutTicks {
 		p.tick(Controls{}, true)
 	}
+	toPlay(t, p)
 	if p.phase != playing || p.current != 1 || p.reserves != 2 {
 		t.Fatalf("after the message: phase %d, current %d, reserves %d", p.phase, p.current, p.reserves)
 	}
@@ -83,7 +85,7 @@ func TestTwoPlayersOneRunsOut(t *testing.T) {
 // death is counted before the reserves are (DESIGN section 4, M4 session
 // and turns).
 func TestExtraLifeOnTheDeathUpdate(t *testing.T) {
-	p := NewPlay(nil, skillByID(t, "arcade"))
+	p := toPlay(t, NewPlay(nil, skillByID(t, "arcade")))
 	p.reserves, p.score = 0, 6999
 	p.stage.earned = 1
 	dieNow(t, p)
@@ -97,7 +99,7 @@ func TestGameSetupSkillsAndStartingLevel(t *testing.T) {
 	h.Ctx.MaxPlayers, h.Ctx.StartLevels = 2, 8
 	h.Ctx.Settings.Game.Players, h.Ctx.Settings.Game.Level = 2, 3
 	h.Ctx.Settings.Game.Skills = [2]string{"easy", "hard"}
-	p := NewPlay(h.Ctx, skillByID(t, "easy"))
+	p := toPlay(t, NewPlay(h.Ctx, skillByID(t, "easy")))
 	p1, p2 := p.players[0], p.players[1]
 	if p1.skillWord != easySkill || p1.reserves != 4 || p1.level != 2 {
 		t.Errorf("player 1: %+v", p1)

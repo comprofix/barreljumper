@@ -253,7 +253,7 @@ func skillByID(t *testing.T, id string) config.Skill {
 }
 
 func TestPlayLosesALifeThenEnds(t *testing.T) {
-	p := NewPlay(nil, skillByID(t, "arcade"))
+	p := toPlay(t, NewPlay(nil, skillByID(t, "arcade")))
 	if p.reserves != 2 {
 		t.Fatalf("reserves %d at the start, want 2", p.reserves)
 	}
@@ -265,6 +265,9 @@ func TestPlayLosesALifeThenEnds(t *testing.T) {
 		}
 		for i := 0; i < deathFreezeTicks+deathSpinTicks+deathHoldTicks; i++ {
 			p.tick(Controls{}, true)
+		}
+		if p.phase == floorCard {
+			toPlay(t, p)
 		}
 	}
 	first := p.stage
@@ -283,16 +286,14 @@ func TestPlayLosesALifeThenEnds(t *testing.T) {
 }
 
 func TestPlayClearAdvancesAndAwardsLives(t *testing.T) {
-	p := NewPlay(nil, skillByID(t, "arcade"))
+	p := toPlay(t, NewPlay(nil, skillByID(t, "arcade")))
 	p.score = 6000
 	p.stage.player.Y = barrelsGoal.y - supportFoot
 	p.tick(Controls{}, false)
-	if p.phase != clearing || p.score != 11000 || p.reserves != 3 {
+	if p.phase != cheering || p.score != 11000 || p.reserves != 3 {
 		t.Fatalf("clear: phase %d, score %d, reserves %d", p.phase, p.score, p.reserves)
 	}
-	for i := 0; i < clearTicks; i++ {
-		p.tick(Controls{}, false)
-	}
+	toPlay(t, p)
 	if p.phase != playing || p.stage.family != rivetsFamily || p.level != 0 {
 		t.Errorf("after the level 1 Barrels clear: family %d, level %d", p.stage.family, p.level+1)
 	}

@@ -11,7 +11,11 @@ func drawGirder(f field, g girder) {
 	if g.right <= g.left {
 		return
 	}
-	x, y, w := float32(g.left), float32(g.y), float32(g.right-g.left)
+	drawBeam(f, float32(g.left), float32(g.y), float32(g.right-g.left))
+}
+
+// drawBeam draws a girder w wide with its top left at x, y.
+func drawBeam(f field, x, y, w float32) {
 	f.rect(x+1, y+7, w, 2.5, shadowColour)
 	f.rect(x, y, w, 7, steelDark)
 	f.rect(x, y, w, 2, steel)
