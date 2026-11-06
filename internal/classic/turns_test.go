@@ -81,6 +81,22 @@ func TestTwoPlayersOneRunsOut(t *testing.T) {
 	}
 }
 
+// TestSkipPlayerOut checks Confirm cuts the "Game Over Player n" message
+// short (DESIGN section 4, M4 session and turns).
+func TestSkipPlayerOut(t *testing.T) {
+	p := twoPlayers(t)
+	p.players[0].reserves = 0
+	dieNow(t, p)
+	if p.phase != playerOut {
+		t.Fatalf("phase %d when player 1 ran out", p.phase)
+	}
+	p.tick(Controls{}, true)
+	p.skip()
+	if p.phase != floorCard || p.current != 1 {
+		t.Errorf("after Confirm: phase %d, current %d, want player 2's floor card", p.phase, p.current)
+	}
+}
+
 // TestExtraLifeOnTheDeathUpdate checks a life earned on the update of a
 // death is counted before the reserves are (DESIGN section 4, M4 session
 // and turns).

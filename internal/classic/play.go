@@ -31,8 +31,8 @@ const (
 	cardTicks        = 223  // 3.07 s, the floor card
 	rivetsEndTicks   = 1063 // 14.6 s, the Rivets ending
 	openingTicks     = 910  // 12.5 s, the reference opening's length
-	gameOverTicks    = 218  // 3.0 s
-	playerOutTicks   = 218  // 3.0 s, the "Game Over Player n" message
+	gameOverTicks    = 218  // 3.0 s, shorter than the reference (owner decision)
+	playerOutTicks   = 655  // 9.0 s, the "Game Over Player n" message
 )
 
 // player is one player's place in the game. Each keeps their own score,
@@ -162,8 +162,8 @@ func (p *Play) Update(ctx *scene.Context) error {
 		return 1
 	}
 	defer p.playSounds(ctx)
-	if p.phase == opening && in.JustPressed(input.Confirm) {
-		p.phase, p.timer, p.jingle = floorCard, 0, startJingle
+	if in.JustPressed(input.Confirm) {
+		p.skip()
 	}
 	p.advance(Controls{
 		Horizontal: axis(input.Left, input.Right),
@@ -178,6 +178,17 @@ func (p *Play) Update(ctx *scene.Context) error {
 		ctx.Switch(scene.AfterGame(ctx, results...))
 	}
 	return nil
+}
+
+// skip answers Confirm: it cuts short the opening, to the floor card, and
+// the "Game Over Player n" message, to the next player's turn.
+func (p *Play) skip() {
+	switch p.phase {
+	case opening:
+		p.phase, p.timer, p.jingle = floorCard, 0, startJingle
+	case playerOut:
+		p.passTurn()
+	}
 }
 
 // advance runs the counter ticks that fall in one 60 Hz frame.
