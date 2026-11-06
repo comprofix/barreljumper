@@ -153,12 +153,7 @@ func (p *Play) drawPlayer(f field) {
 		}
 	}
 	if dying && p.timer >= deathFreezeTicks+deathSpinTicks {
-		// Flat on the girder, hat knocked off.
-		f.roundRect(cx-7, y+11, 14, 4, 1.5, vestOrange)
-		f.rect(cx-1, y+11, 1, 4, vestStripe)
-		f.roundRect(cx+5, y+11.5, 5, 3, 1, denim)
-		f.circle(cx-8, y+13, 2.5, skin)
-		f.ellipse(cx-12, y+14, 3, 1.5, hatYellow)
+		p.drawFallen(f, cx, y, facing)
 		return
 	}
 	f.ellipse(cx, y+16, 6, 1, shadowColour)
@@ -273,3 +268,71 @@ func (p *Play) drawText(ctx *scene.Context, f field) {
 
 func cos(a float32) float32 { return float32(math.Cos(float64(a))) }
 func sin(a float32) float32 { return float32(math.Sin(float64(a))) }
+
+// drawFallen draws the worker flat on his back after the death spin, in
+// the hero's own colours and shading: head toward where he faced, the hard
+// hat knocked off beside it, one arm flung back, boots up, and stars
+// circling his head.
+func (p *Play) drawFallen(f field, cx, y, facing float32) {
+	d := facing // the side the head lies on
+	at := func(dx float32) float32 { return cx + dx*d }
+	// rect draws a box given by its edges along the body, either way round.
+	rect := func(dx0, dx1, y0, h float32, c color.Color) {
+		x0, x1 := at(dx0), at(dx1)
+		f.rect(min(x0, x1), y0, abs32(x1-x0), h, c)
+	}
+	f.ellipse(cx, y+16, 10, 1.2, shadowColour)
+	// Legs along the girder, the far one darker, and boots toes up.
+	rect(-1, -8, y+13.4, 1.8, denimDark)
+	rect(-1, -8, y+11.8, 2, denim)
+	rect(-1, -8, y+11.8, 0.5, mix(denim, rgb(0xffffff), 0.25))
+	rect(-8, -10.4, y+10.6, 4.8, boot)
+	rect(-8, -8.8, y+10.6, 4.8, mix(boot, rgb(0xffffff), 0.15))
+	rect(-8, -10.4, y+15, 0.6, mix(boot, eyeColour, 0.5))
+	// The other arm along his side, under the vest.
+	f.line(at(1), y+15, at(-3), y+15.3, 1.5, skin)
+	f.circle(at(-3.4), y+15.3, 0.8, skin)
+	// The torso in the vest, shaded on its lower side, stripes across it.
+	vx := min(at(5), at(-2))
+	f.roundRect(vx, y+11, 7, 4.6, 1.4, vestOrange)
+	f.rect(vx, y+14.2, 7, 1.2, mix(vestOrange, eyeColour, 0.25))
+	rect(2.6, 3.5, y+11, 4.6, vestStripe)
+	rect(0.4, 1.3, y+11, 4.6, vestStripe)
+	// The near arm flung back over his head.
+	f.line(at(4), y+11.8, at(7.5), y+9.2, 1.6, skin)
+	f.circle(at(7.8), y+8.9, 0.9, skin)
+	// The head, cheek shaded, eyes crossed out.
+	hx := at(7.4)
+	f.rect(min(at(5), at(6)), y+12.6, 1, 1.4, skinShade)
+	f.circle(hx, y+13.2, 2.5, skin)
+	f.ellipse(hx, y+14.4, 2.1, 1, skinShade)
+	f.ellipse(hx, y+11.4, 2.2, 0.9, rgb(0x5a3a22)) // hair
+	for _, ex := range []float32{-0.9, 0.9} {
+		ex += hx
+		f.line(ex-0.5, y+12.4, ex+0.5, y+13.4, 0.35, eyeColour)
+		f.line(ex+0.5, y+12.4, ex-0.5, y+13.4, 0.35, eyeColour)
+	}
+	f.ellipse(hx, y+14.3, 0.6, 0.3, rgb(0x9a3040))
+	// The hard hat lying upturned beside him, brim and shine like his own.
+	tx := at(13.4)
+	f.ellipse(tx, y+14.4, 3.2, 1.7, hatYellow)
+	f.rect(tx-3.4, y+14.2, 6.8, 0.9, hatShade)
+	f.ellipse(tx-1, y+15.1, 1.2, 0.4, mix(hatYellow, rgb(0xffffff), 0.5))
+	// Three stars circling above his head.
+	spin := float32(p.timer) * 0.08
+	for i := range 3 {
+		a := spin + float32(i)*2.094
+		sx, sy := hx+3.4*cos(a), y+9+1.2*sin(a)
+		r := float32(1.1)
+		f.poly(hazardYellow, sx, sy-r, sx+0.35*r, sy-0.35*r, sx+r, sy, sx+0.35*r, sy+0.35*r,
+			sx, sy+r, sx-0.35*r, sy+0.35*r, sx-r, sy, sx-0.35*r, sy-0.35*r)
+		f.circle(sx, sy, 0.3, rgb(0xffffff))
+	}
+}
+
+func abs32(v float32) float32 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
