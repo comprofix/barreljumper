@@ -110,8 +110,8 @@ func (p *Play) drawScreen(f field, tick int64) {
 	}
 	if p.phase == carryOff {
 		th, gx, gy, hx, hy, grabbed := p.carried()
+		drawCaptive(f, gx, gy, tick) // behind him, held
 		drawThrower(f, th)
-		drawCaptive(f, gx, gy, tick)
 		drawHook(f, hx, hy)
 		drawHeart(f, cx+16, cy+1, grabbed)
 	} else {

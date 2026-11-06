@@ -21,8 +21,9 @@ const (
 )
 
 // Opening: the crane lowers the Barrels rows into place above the ground,
-// then hoists the thrower and the captive to the top, where she walks to
-// her platform and he beats his chest.
+// then hoists the thrower and the captive to the top. He carries her to
+// her platform and sets her on it, she walks to her place, and he walks
+// back to his and beats his chest.
 const (
 	openRowEvery = 70
 	openRowTicks = 90
@@ -30,8 +31,18 @@ const (
 	openLadders  = 460 // ladders, drum and hammers appear
 	openHook     = 480 // the hook comes down to the thrower
 	openHoist    = 520 // and lifts him and the captive
-	openTop      = 720 // they reach the top
-	openPlaced   = 790 // she is on her platform
+	openTop      = 680 // they reach the top
+	openCarried  = 740 // he has carried her to the platform's edge
+	openPlaced   = 770 // and set her on it
+	openHerPlace = 810 // she has walked to her place
+	openBack     = 840 // he is back at his own
+)
+
+// The thrower carries the captive this far right along the top, to the
+// platform's left edge, and holds her at his side.
+const (
+	openCarryX         = 70
+	carryAtX, carryAtY = 36, 10
 )
 
 // Rivets ending: the inner floors drop into a pile, the thrower's own floor
@@ -83,7 +94,7 @@ func openingSounds(t int) sound {
 		s |= soundWinch
 	}
 	if t == openPlaced {
-		s |= soundClank
+		s |= soundLand
 	}
 	return s
 }
@@ -258,7 +269,7 @@ func (p *Play) drawOpening(f field, tick int64) {
 	if t >= openHook {
 		th.pose = throwerTauntB
 		hookY = lerp(-12, float32(th.y)+1.5, smooth(span(t, openHook, openHoist-openHook)))
-		gx, gy = float32(th.x)+38, float32(th.y)+10
+		gx, gy = float32(th.x)+carryAtX, float32(th.y)+carryAtY
 	}
 	if t >= openHoist {
 		up := smooth(span(t, openHoist, openTop-openHoist))
@@ -266,20 +277,50 @@ func (p *Play) drawOpening(f field, tick int64) {
 		th.y = int(lerp(float32(openThrower.y), float32(s.layout.thrower.y), up))
 		handX = float32(th.x) + 37
 		hookY = float32(th.y) + 1.5
-		gx, gy = float32(th.x)+38, float32(th.y)+10
+		gx, gy = float32(th.x)+carryAtX, float32(th.y)+carryAtY
 	}
 	if t >= openTop {
+		// The hook goes back up; he carries her along the top under his arm.
 		hookY = lerp(float32(th.y)+1.5, -12, smooth(span(t, openTop, 60)))
-		walk := smooth(span(t, openTop, openPlaced-openTop))
-		cx, cy := captiveAt(barrelsFamily)
-		gx, gy = lerp(gx, cx, walk), lerp(gy, cy, walk)
-		th.pose = throwerReady
+		home := float32(s.layout.thrower.x)
+		x := lerp(home, openCarryX, smooth(span(t, openTop, openCarried-openTop)))
+		bob := -((t / 8) % 2) // a step bob
+		th.pose = throwerPickUp
+		if t >= openPlaced {
+			// Then walks back to his place.
+			x = lerp(openCarryX, home, smooth(span(t, openPlaced+5, openBack-openPlaced-5)))
+			th.pose = throwerReady
+		}
+		th.x = int(x)
+		if t < openBack && x != home && x != openCarryX {
+			th.y += bob
+		}
+		gx, gy = x+carryAtX, float32(th.y)+carryAtY
+		if t >= openCarried {
+			// He lifts her onto the platform's edge, and she walks to her place.
+			cx, cy := captiveAt(barrelsFamily)
+			edge := float32(barrelsGoal.left)
+			lift := smooth(span(t, openCarried, openPlaced-openCarried))
+			gx = lerp(openCarryX+carryAtX, edge, lift)
+			gy = lerp(float32(s.layout.thrower.y)+carryAtY, cy, lift)
+			if t >= openPlaced {
+				gx = lerp(edge, cx, span(t, openPlaced, openHerPlace-openPlaced))
+				gy = cy - float32((t/6)%2)*0.6*float32(1-span(t, openHerPlace, 1))
+			}
+		}
 	}
-	if t >= openPlaced {
+	if t >= openBack {
 		th.pose = throwerTauntA + (t/12)%2
 	}
+	// While he holds her she is behind him, his fist at her waist.
+	held := t >= openHook && t < openPlaced
+	if held {
+		drawCaptive(f, gx, gy, tick)
+	}
 	drawThrower(f, th)
-	drawCaptive(f, gx, gy, tick)
+	if !held {
+		drawCaptive(f, gx, gy, tick)
+	}
 	if hookY > -12 {
 		drawHook(f, handX, hookY)
 	}
