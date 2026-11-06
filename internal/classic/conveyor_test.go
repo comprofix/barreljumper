@@ -201,3 +201,26 @@ func TestConveyorCompletionAndDrumFireballs(t *testing.T) {
 		t.Errorf("drum fireball %+v, direction %d", f, dir)
 	}
 }
+
+// TestBeltHeldAtTheWall checks an idle player carried into the right wall
+// is pulled back by their own update: 245 after a belt move, 244 after a
+// call without one (DESIGN section 4, M3 Conveyor).
+func TestBeltHeldAtTheWall(t *testing.T) {
+	s := newTestStage(conveyorFamily)
+	m := s.player
+	b := &s.belts[0]
+	b.dir, b.counter = 1, 0
+	m.X, m.Y = 240, b.y-1-supportFoot
+	seen := map[int]bool{}
+	for range 30 {
+		s.player.step(Controls{}, true)
+		s.moveBelts()
+		seen[m.X] = true
+		if m.X > maxPlayerX+1 || m.falling {
+			t.Fatalf("carried through the wall: X %d, falling %v", m.X, m.falling)
+		}
+	}
+	if !seen[maxPlayerX] || !seen[maxPlayerX+1] {
+		t.Errorf("positions %v, want 244 and 245 in turn", seen)
+	}
+}

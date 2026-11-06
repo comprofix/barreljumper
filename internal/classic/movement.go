@@ -87,8 +87,13 @@ func (m *Movement) step(c Controls, arcade bool) {
 		m.X = groundX(m.X, c.Horizontal, arcade && m.movePhase == 0, m.Hammer)
 		m.movePhase = (m.movePhase + 1) % 6
 	}
+	// The wall clamp runs on every call that gets here, idle and falling
+	// ones too, so a belt cannot carry the player through a wall (DESIGN
+	// section 4, M3 Conveyor).
 	if m.Hammer && !m.falling {
 		m.X = min(max(m.X, 9), 236)
+	} else {
+		m.X = min(max(m.X, 0), maxPlayerX)
 	}
 	// Walking descent precedes contact, including the landing call. A lower
 	// girder step can therefore suppress walking for one recovery call.
