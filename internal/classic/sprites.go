@@ -223,16 +223,29 @@ func drawThrower(f field, t thrower) {
 // drawCaptive draws the site architect waiting to be rescued, in the
 // 10 x 17 box at (x, y), waving a rolled blueprint.
 func drawCaptive(f field, x, y float32, tick int64) {
+	drawCaptiveStep(f, x, y, tick, 0)
+}
+
+// drawCaptiveStep draws the captive mid-step when stride is not zero: the
+// leg stride picks is lifted forward, knee bent, the other on the ground.
+func drawCaptiveStep(f field, x, y float32, tick int64, stride int) {
 	jacket, jacketDark, jacketLight := captiveShirt, mix(captiveShirt, eyeColour, 0.35), mix(captiveShirt, rgb(0xffffff), 0.3)
 	skirt, skirtDark := rgb(0x2e3450), rgb(0x1e2238)
 	hairLight := mix(captiveHair, rgb(0xd08850), 0.45)
 	wave := float32((tick/20)%2) * 1.6
 	f.ellipse(x+5, y+17, 5, 1, shadowColour)
 	// Legs, shoes and a pencil skirt.
-	f.rect(x+3, y+12.5, 1.6, 3.6, skin)
-	f.rect(x+5.6, y+12.5, 1.6, 3.6, skinShade)
-	f.roundRect(x+2.4, y+15.6, 2.6, 1.4, 0.6, rgb(0x6a2030))
-	f.roundRect(x+5.2, y+15.6, 2.6, 1.4, 0.6, rgb(0x6a2030))
+	for i, leg := range []struct {
+		x, shoe float32
+		c       color.RGBA
+	}{{3, 2.4, skin}, {5.6, 5.2, skinShade}} {
+		lift, ahead := float32(0), float32(0)
+		if stride != 0 && (stride > 0) == (i == 1) {
+			lift, ahead = 1.3, 0.9 // she only walks to the right
+		}
+		f.rect(x+leg.x+ahead, y+12.5, 1.6, 3.6-lift, leg.c)
+		f.roundRect(x+leg.shoe+ahead, y+15.6-lift, 2.6, 1.4, 0.6, rgb(0x6a2030))
+	}
 	f.poly(skirt, x+2.2, y+10.4, x+8, y+10.4, x+7.6, y+13.4, x+2.6, y+13.4)
 	f.rect(x+5.6, y+10.4, 2.4, 3, skirtDark)
 	// The jacket: lit on one side, lapels open over a white blouse.

@@ -139,7 +139,7 @@ func captiveAt(family int) (float32, float32) {
 	case conveyorFamily:
 		return 146, 5
 	}
-	return 126, 6
+	return 126, 7 // her shoes end 17 below, on the platform's top at 24
 }
 
 // carried is the thrower, captive and hook during the carry-off.
@@ -314,7 +314,7 @@ func (p *Play) drawOpening(f field, tick int64) {
 			gy = lerp(float32(top)+carryAtY, cy, lift)
 			if t >= openPlaced {
 				gx = lerp(edge, cx, span(t, openPlaced, openHerPlace-openPlaced))
-				gy = cy - float32((t/6)%2)*0.6*float32(1-span(t, openHerPlace, 1))
+				gy = cy
 			}
 		}
 	}
@@ -328,7 +328,12 @@ func (p *Play) drawOpening(f field, tick int64) {
 	}
 	drawThrower(f, th)
 	if !held {
-		drawCaptive(f, gx, gy, tick)
+		// She walks the platform to her place, a leg lifting each step.
+		stride := 0
+		if t >= openPlaced && t < openHerPlace {
+			stride = 1 - 2*((t/6)%2)
+		}
+		drawCaptiveStep(f, gx, gy, tick, stride)
 	}
 	if hookY > -12 {
 		drawHook(f, handX, hookY)
