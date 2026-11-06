@@ -127,6 +127,14 @@ func (s *stage) hitWithHammer() {
 			return
 		}
 	}
+	for i := range s.pies {
+		p := &s.pies[i]
+		if p.active && p.x < left+w && p.x+18 > left && p.y < top+ht && p.y+8 > top {
+			p.active = false
+			s.startSmash(p.x, p.y)
+			return
+		}
+	}
 }
 
 func (s *stage) startSmash(x, y int) {

@@ -46,6 +46,11 @@ func (s *stage) contact() bool {
 			return true
 		}
 	}
+	for _, p := range s.pies {
+		if p.active && p.x+2 <= right && p.x+11 >= left && p.y+2 <= m.Y+14 && p.y+5 >= m.Y {
+			return true
+		}
+	}
 	for _, p := range s.springs {
 		if p.active && p.x+2 <= right && p.x+11 >= left && p.y+2 <= m.Y+14 && p.y+13 >= m.Y {
 			return true
@@ -70,6 +75,11 @@ func (s *stage) scanJump() {
 	}
 	for _, p := range s.springs {
 		if p.active && p.x-6 < m.X+16 && p.x+22 >= m.X && p.y >= m.Y+16 && p.y < m.Y+30 {
+			m.jumpCount++
+		}
+	}
+	for _, p := range s.pies {
+		if p.active && p.x-4 < m.X+16 && p.x+18 >= m.X && p.y >= m.Y+16 && p.y < m.Y+30 {
 			m.jumpCount++
 		}
 	}

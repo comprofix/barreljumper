@@ -45,26 +45,29 @@ type rivet struct {
 // stage holds the rules of one Classic screen attempt. It knows nothing
 // of drawing, sound or the frame rate.
 type stage struct {
-	rng       *random
-	family    int
-	skill     int
-	level     int // zero-based
-	layout    layout
-	player    *Movement
-	girders   []girder
-	ladders   []ladder
-	barrels   [16]barrel
-	thrower   thrower
-	oil       oilDrum
-	fireballs [8]fireball
-	pickups   []hammerPickup
-	hammer    heldHammer
-	smash     smash
-	items     []lostItem
-	rivets    []rivet
-	elevators [6]elevator
-	springs   [4]spring
-	bonus     int
+	rng        *random
+	family     int
+	skill      int
+	level      int // zero-based
+	layout     layout
+	player     *Movement
+	girders    []girder
+	ladders    []ladder
+	barrels    [16]barrel
+	thrower    thrower
+	oil        oilDrum
+	fireballs  [8]fireball
+	pickups    []hammerPickup
+	hammer     heldHammer
+	smash      smash
+	items      []lostItem
+	rivets     []rivet
+	elevators  [6]elevator
+	springs    [4]spring
+	belts      [4]belt
+	retractors [2]retractor
+	pies       [10]pie
+	bonus      int
 	// updates is the shared eligible-update counter. Stage entry keeps it,
 	// so the first bonus decrease after a restart can come early, and the
 	// periodic taunts and spawns keep their phase across screens.
@@ -112,6 +115,9 @@ func newStage(family int, rng *random, skill, level int, updates *int) *stage {
 	case elevatorsFamily:
 		s.thrower = thrower{x: l.thrower.x, y: l.thrower.y, phase: 2, threshold: 32}
 		s.setupElevators()
+	case conveyorFamily:
+		s.thrower = thrower{x: l.thrower.x, y: l.thrower.y, phase: 2, threshold: 32}
+		s.setupConveyor()
 	}
 	return s
 }
@@ -177,12 +183,18 @@ func (s *stage) stageRoutines() {
 	case elevatorsFamily:
 		s.moveSprings()
 		s.moveElevators()
+	case conveyorFamily:
+		s.moveBelts()
+		s.moveRetractors()
 	}
 	if s.thrower.taunting {
 		s.taunt()
 	} else if *s.updates%tauntPeriod == 0 {
 		t := &s.thrower
 		t.counter, t.taunting, t.phase, t.pose = 0, true, 1, throwerTauntA
+	}
+	if *s.updates%s.fireballPeriod() == 0 && s.family == conveyorFamily {
+		s.spawnDrumFireball()
 	}
 	if *s.updates%s.fireballPeriod() == 0 && s.family == rivetsFamily {
 		i := s.rng.bucket(4)
@@ -192,6 +204,9 @@ func (s *stage) stageRoutines() {
 		} else {
 			s.spawnFireball(2+10*i, y, 0)
 		}
+	}
+	if s.family == conveyorFamily && *s.updates%s.piePeriod() == 0 {
+		s.spawnPie()
 	}
 }
 
@@ -212,6 +227,8 @@ func (s *stage) completed() bool {
 		return true
 	case elevatorsFamily:
 		return 24-supportFoot-1 >= m.Y
+	case conveyorFamily:
+		return 42-supportFoot-1 >= m.Y
 	default:
 		if !m.jumping && barrelsGoal.y-supportFoot >= m.Y {
 			m.Y--

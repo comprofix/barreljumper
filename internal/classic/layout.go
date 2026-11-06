@@ -43,6 +43,8 @@ func newLayout(family int) layout {
 		return rivetsLayout()
 	case elevatorsFamily:
 		return elevatorsLayout()
+	case conveyorFamily:
+		return conveyorLayout()
 	}
 	return barrelsLayout()
 }

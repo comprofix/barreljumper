@@ -150,15 +150,14 @@ func TestThrowerContactOnBarrels(t *testing.T) {
 func TestClassicScheduleProgression(t *testing.T) {
 	p := NewPlay(nil, skillByID(t, "arcade"))
 	var got []string
-	for range 6 {
+	for range 22 {
 		got = append(got, fmt.Sprint(p.level+1, ":", p.stage.family))
 		p.nextStage()
 		p.enterStage()
 	}
-	// Level 3 Conveyor is not built yet.
-	want := "[1:0 1:3 2:0 2:2 2:3 3:0]"
+	want := "[1:0 1:3 2:0 2:2 2:3 3:0 3:1 3:2 3:3 4:0 4:1 4:0 4:2 4:3 5:0 5:1 5:0 5:2 5:0 5:3 6:0 6:3]"
 	if fmt.Sprint(got) != want {
-		t.Errorf("screens %v, want %s", got, want)
+		t.Errorf("screens %v\nwant %s", got, want)
 	}
 }
 

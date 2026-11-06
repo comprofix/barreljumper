@@ -25,8 +25,7 @@ const (
 )
 
 // Play is one Classic game, following the Classic schedule (DESIGN
-// section 4, Screen progression). Families not yet built in M3 are passed
-// over until they arrive.
+// section 4, Screen progression).
 type Play struct {
 	skill     config.Skill
 	skillWord int
@@ -83,13 +82,7 @@ func (p *Play) beginTurn() {
 	p.enterStage()
 }
 
-// builtFamilies are the families M3 has implemented so far.
-var builtFamilies = map[int]bool{barrelsFamily: true, elevatorsFamily: true, rivetsFamily: true}
-
 func (p *Play) enterStage() {
-	for !builtFamilies[p.family()] {
-		p.nextStage()
-	}
 	p.stage = newStage(p.family(), &p.rng, p.skillWord, p.level, &p.updates)
 	p.phase, p.timer = playing, 0
 }

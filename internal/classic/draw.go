@@ -37,6 +37,8 @@ var (
 	goalColour     = color.RGBA{236, 140, 200, 255}
 	rivetColour    = color.RGBA{250, 220, 90, 255}
 	springColour   = color.RGBA{120, 220, 140, 255}
+	pieColour      = color.RGBA{240, 200, 150, 255}
+	beltMark       = color.RGBA{255, 240, 200, 255}
 	itemColour     = color.RGBA{200, 120, 230, 255}
 	sidebarColour  = color.RGBA{10, 12, 20, 255}
 )
@@ -91,6 +93,19 @@ func (p *Play) Draw(ctx *scene.Context, dst *ebiten.Image) {
 			if !r.removed {
 				f.rect(float32(r.x)+2, float32(r.y)-2, 6, 9, rivetColour)
 			}
+		}
+	}
+	for _, p := range s.pies {
+		if p.active {
+			f.rect(float32(p.x)+2, float32(p.y)+2, 10, 4, pieColour) // X+2..X+11, Y+2..Y+5
+		}
+	}
+	for _, b := range s.belts {
+		// Direction marks along the belt surface.
+		for x := b.x + 4; x < b.x+b.width-4; x += 16 {
+			tip := float32(x) + 3*float32(b.dir)
+			f.line(float32(x), float32(b.y)+2, tip, float32(b.y)+3.5, 0.8, beltMark)
+			f.line(tip, float32(b.y)+3.5, float32(x), float32(b.y)+5, 0.8, beltMark)
 		}
 	}
 	for _, p := range s.springs {
