@@ -74,6 +74,7 @@ type stage struct {
 	updates *int
 	earned  int // points earned this attempt, collected by the session
 	popups  []popup
+	sounds  sound // events since the session last took them
 }
 
 func stageBonus(level int) int {
@@ -138,7 +139,17 @@ func (s *stage) update(c Controls, eligible bool) int {
 		if s.smash.active {
 			s.updateSmash()
 		} else {
-			s.player.step(c, s.skill != easySkill)
+			m := s.player
+			x, y, jumping := m.X, m.Y, m.jumping
+			m.step(c, s.skill != easySkill)
+			switch {
+			case m.jumping && !jumping:
+				s.sounds |= soundJump
+			case m.ladder != nil && m.Y != y && m.Y%4 == 0:
+				s.sounds |= soundClimb
+			case !m.jumping && m.ladder == nil && m.X != x && m.X%4 == 0:
+				s.sounds |= soundStep
+			}
 			if s.player.apex {
 				s.scanJump()
 			}
@@ -287,6 +298,7 @@ func (s *stage) award(points, x, y int) {
 		return
 	}
 	s.earned += points
+	s.sounds |= soundPoints
 	s.popups = append(s.popups, popup{points: points, x: x, y: y})
 }
 

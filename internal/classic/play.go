@@ -1,6 +1,7 @@
 package classic
 
 import (
+	"github.com/comprofix/barreljumper/internal/audio"
 	"github.com/comprofix/barreljumper/internal/config"
 	"github.com/comprofix/barreljumper/internal/input"
 	"github.com/comprofix/barreljumper/internal/scene"
@@ -49,6 +50,8 @@ type Play struct {
 	updates int
 	stage   *stage
 	phase   int
+	sounds  sound       // effects to play at the end of the frame
+	jingle  *audio.Tune // a jingle to start at the end of the frame
 	timer   int
 	// The nominal PIT clock, sampled each 60 Hz frame.
 	clockPhase int
@@ -110,6 +113,7 @@ func (p *Play) beginTurn() {
 func (p *Play) enterStage() {
 	p.stage = newStage(p.family(), &p.rng, p.skillWord, p.level, &p.updates)
 	p.phase, p.timer = playing, 0
+	p.jingle = startJingle
 }
 
 func (p *Play) family() int { return classicSchedule[p.level%5][p.index] }
@@ -146,6 +150,7 @@ func (p *Play) Update(ctx *scene.Context) error {
 		}
 		return 1
 	}
+	defer p.playSounds(ctx)
 	p.advance(Controls{
 		Horizontal: axis(input.Left, input.Right),
 		Vertical:   axis(input.Up, input.Down),
@@ -178,12 +183,16 @@ func (p *Play) tick(c Controls, eligible bool) {
 	case playing:
 		result := p.stage.update(c, eligible)
 		p.collect()
+		p.sounds |= p.stage.sounds
+		p.stage.sounds = 0
 		switch result {
 		case stageDied:
 			p.stage.dropHammer()
 			p.phase, p.timer = dying, 0
+			p.sounds |= soundDeath
 		case stageCleared:
 			p.phase, p.timer = clearing, 0
+			p.jingle = clearJingle
 		}
 	case dying:
 		p.timer++
@@ -212,6 +221,16 @@ func (p *Play) tick(c Controls, eligible bool) {
 	case gameOver:
 		p.timer++
 	}
+}
+
+// playSounds starts the frame's jingle and effects.
+func (p *Play) playSounds(ctx *scene.Context) {
+	if p.jingle != nil {
+		ctx.Audio.PlayTune(p.jingle)
+		p.jingle = nil
+	}
+	play(ctx.Audio, p.sounds)
+	p.sounds = 0
 }
 
 // out reports whether no player has a reserve left.

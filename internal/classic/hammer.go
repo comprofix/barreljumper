@@ -40,6 +40,7 @@ func (s *stage) collectHammer() {
 		if h.active && h.x < m.X+14 && h.x+10 > m.X+4 && h.y < m.Y+16 && h.y+8 > m.Y {
 			h.active = false
 			s.hammer = heldHammer{held: true, x: h.x, y: h.y}
+			s.sounds |= soundHammer
 			m.Hammer = true
 			return
 		}
@@ -60,6 +61,9 @@ func (s *stage) swingHammer() {
 		h.counter = 0
 		if !m.falling {
 			h.forward = !h.forward
+			if h.forward {
+				s.sounds |= soundSwing
+			}
 		}
 		if !h.forward {
 			h.counter++
@@ -139,6 +143,7 @@ func (s *stage) hitWithHammer() {
 
 func (s *stage) startSmash(x, y int) {
 	s.smash = smash{active: true, x: x + 2, y: y + 1}
+	s.sounds |= soundSmash
 }
 
 // updateSmash runs the destruction animation. The award is drawn on every
