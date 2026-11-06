@@ -1,6 +1,7 @@
 package scene
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -74,6 +75,7 @@ type MainMenu struct {
 // The shared scenes draw at the screen's own size in either look.
 func (*Title) Native()          {}
 func (*MainMenu) Native()       {}
+func (*PlayersSelect) Native()  {}
 func (*SkillSelect) Native()    {}
 func (*Options) Native()        {}
 func (*Pause) Native()          {}
@@ -90,7 +92,7 @@ func (s *MainMenu) Update(ctx *Context) error {
 	playTitleTune(ctx)
 	if s.menu.Items == nil {
 		s.menu.Items = []ui.Item{
-			{Label: "Play", Disabled: ctx.NewPlay == nil, Confirm: func() { ctx.Switch(NewSkillSelect()) }},
+			{Label: "Play", Disabled: ctx.NewPlay == nil, Confirm: func() { ctx.Switch(NewPlayFlow(ctx)) }},
 			{Label: "Options", Confirm: func() { ctx.Switch(NewOptions(func() Scene { return NewMainMenu() })) }},
 			{Label: "High scores", Confirm: func() { ctx.Switch(NewHighScoreTable(config.Skills[0], -1)) }},
 			{Label: "Quit", Confirm: ctx.Quit},
@@ -108,6 +110,52 @@ func (s *MainMenu) Update(ctx *Context) error {
 // Draw implements Scene.
 func (s *MainMenu) Draw(ctx *Context, dst *ebiten.Image) {
 	drawMenuScreen(ctx, dst, config.Title, &s.menu, "Enter: choose   Esc: back")
+}
+
+// NewPlayFlow is the first menu of starting a game: the Players menu when
+// the game supports more than one, otherwise the skill menu.
+func NewPlayFlow(ctx *Context) Scene {
+	if ctx.MaxPlayers > 1 {
+		return NewPlayersSelect()
+	}
+	ctx.Players = 1
+	return NewSkillSelect()
+}
+
+// PlayersSelect chooses how many players take turns, then the skill.
+type PlayersSelect struct {
+	menu ui.Menu
+}
+
+// NewPlayersSelect returns the Players menu.
+func NewPlayersSelect() *PlayersSelect { return &PlayersSelect{} }
+
+// Update implements Scene.
+func (s *PlayersSelect) Update(ctx *Context) error {
+	if s.menu.Items == nil {
+		for n := 1; n <= ctx.MaxPlayers; n++ {
+			label := "1 Player"
+			if n > 1 {
+				label = fmt.Sprint(n, " Players")
+			}
+			s.menu.Items = append(s.menu.Items, ui.Item{Label: label, Confirm: func() {
+				ctx.Players = n
+				ctx.Switch(NewSkillSelect())
+			}})
+		}
+		menuSounds(ctx, &s.menu)
+	}
+	if ctx.Input.JustPressed(input.Back) {
+		ctx.Switch(NewMainMenu())
+		return nil
+	}
+	updateMenu(ctx, &s.menu, menuTop)
+	return nil
+}
+
+// Draw implements Scene.
+func (s *PlayersSelect) Draw(ctx *Context, dst *ebiten.Image) {
+	drawMenuScreen(ctx, dst, "PLAYERS", &s.menu, "Players take turns")
 }
 
 // SkillSelect chooses the skill level and starts a game.

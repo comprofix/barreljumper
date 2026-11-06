@@ -168,6 +168,12 @@ type Context struct {
 	// start on; 0 or 1 is the first. The -screen flag sets it, for
 	// testing, and such games are tests too.
 	StartScreen int
+	// MaxPlayers is how many players the game supports taking turns; above
+	// one, Play asks how many before the skill.
+	MaxPlayers int
+	// Players is how many players the game being started has, from the
+	// Players menu; 0 is one.
+	Players int
 
 	pixel           *ebiten.Image // the pixel look's screen, for scenes enlarged in the smooth look; a render cache
 	next            Scene

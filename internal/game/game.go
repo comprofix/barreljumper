@@ -43,6 +43,8 @@ type Content struct {
 	// NativePlay says the play and demo scenes draw in either look (see
 	// scene.Context).
 	NativePlay bool
+	// MaxPlayers is how many players can take turns (see scene.Context).
+	MaxPlayers int
 	Sounds     audio.Bank
 	Sheets     []string
 	// The game's title and high score tunes, if it has its own (see
@@ -105,6 +107,7 @@ func New(seed uint64, saved Saved, synth *audio.Synth) (*Game, error) {
 		NewPlay:    content.NewPlay,
 		NewDemo:    content.NewDemo,
 		NativePlay: content.NativePlay,
+		MaxPlayers: content.MaxPlayers,
 		Audio:      synth,
 		Sounds:     audio.Join(scene.Sounds, content.Sounds),
 		TitleTune:  content.TitleTune,

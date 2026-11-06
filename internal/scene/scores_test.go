@@ -151,3 +151,44 @@ func TestScoresByMouse(t *testing.T) {
 	h.mouse(input.Click(0, 0))
 	current[*MainMenu](t, h)
 }
+
+// TestAfterGameEntersEachPlayer checks a two-player game offers each
+// qualifying score in turn, numbered by player.
+func TestAfterGameEntersEachPlayer(t *testing.T) {
+	h := newHarness(t, NewMainMenu())
+	sk := config.Skills[0]
+	e, ok := AfterGame(h.ctx, sk, 300, 700).(*HighScoreEntry)
+	if !ok || e.player != 1 || e.points != 300 {
+		t.Fatalf("first entry %+v", e)
+	}
+	h.ctx.Scores.Add(sk.ID, "AAA", 300)
+	next, ok := nextEntry(h.ctx, sk, e.rest, e.player+1, 0).(*HighScoreEntry)
+	if !ok || next.player != 2 || next.points != 700 {
+		t.Fatalf("second entry %+v", next)
+	}
+	if e, _ := AfterGame(h.ctx, sk, 0, 900).(*HighScoreEntry); e == nil || e.player != 2 {
+		t.Errorf("only player 2 qualifying: %+v", e)
+	}
+	if e, _ := AfterGame(h.ctx, sk, 900).(*HighScoreEntry); e == nil || e.player != 0 {
+		t.Errorf("a one-player entry is numbered: %+v", e)
+	}
+}
+
+func TestPlayersMenu(t *testing.T) {
+	h := newHarness(t, NewMainMenu())
+	if _, ok := NewPlayFlow(h.ctx).(*SkillSelect); !ok || h.ctx.Players != 1 {
+		t.Error("a one-player game should go straight to the skill menu")
+	}
+	h.ctx.MaxPlayers = 2
+	s, ok := NewPlayFlow(h.ctx).(*PlayersSelect)
+	if !ok {
+		t.Fatal("no Players menu for a two-player game")
+	}
+	h.ctx.Switch(s)
+	h.press(ebiten.KeyEnter) // let the fade finish into the menu
+	h.press(ebiten.KeyArrowDown)
+	h.press(ebiten.KeyEnter)
+	if h.ctx.Players != 2 {
+		t.Errorf("Players %d after choosing 2 Players", h.ctx.Players)
+	}
+}

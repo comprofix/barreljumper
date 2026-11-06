@@ -127,14 +127,36 @@ func (t *Tally) Draw(ctx *Context, dst *ebiten.Image) {
 	}
 }
 
-// AfterGame is where a finished game goes once its score is final: initials
-// entry if the score makes the table, otherwise the table itself. A game
-// started for testing (Context.Testing) is not entered.
-func AfterGame(ctx *Context, skill config.Skill, points int) Scene {
-	if !ctx.Testing() && ctx.Scores.Qualifies(skill.ID, points) {
-		return NewHighScoreEntry(skill, points)
+// AfterGame is where a finished game goes once its scores are final, one
+// per player: initials entry for each score that makes the table, in
+// player order, then the table itself. A game started for testing
+// (Context.Testing) is not entered.
+func AfterGame(ctx *Context, skill config.Skill, points ...int) Scene {
+	first := 1
+	if len(points) == 1 {
+		first = 0 // a one-player game shows no player number
 	}
-	return NewHighScoreTable(skill, -1)
+	return nextEntry(ctx, skill, points, first, -1)
+}
+
+// nextEntry offers the entry for the first of points that qualifies, or
+// shows the table with place highlighted. first is the player number of
+// points[0], or 0 when players are not numbered.
+func nextEntry(ctx *Context, skill config.Skill, points []int, first, place int) Scene {
+	if ctx.Testing() {
+		return NewHighScoreTable(skill, place)
+	}
+	for i, pts := range points {
+		if ctx.Scores.Qualifies(skill.ID, pts) {
+			e := NewHighScoreEntry(skill, pts)
+			e.rest = points[i+1:]
+			if first > 0 {
+				e.player = first + i
+			}
+			return e
+		}
+	}
+	return NewHighScoreTable(skill, place)
 }
 
 // HighScoreEntry takes the player's initials for a new high score: Up and
@@ -143,6 +165,8 @@ func AfterGame(ctx *Context, skill config.Skill, points int) Scene {
 type HighScoreEntry struct {
 	skill   config.Skill
 	points  int
+	player  int                     // the player shown, from 1, or 0 in a one-player game
+	rest    []int                   // the later players' scores, offered next
 	letters [config.InitialsLen]int // indexes into score.Letters
 	slot    int
 	ticks   int64
@@ -188,7 +212,7 @@ func (e *HighScoreEntry) Update(ctx *Context) error {
 		}
 		place := ctx.Scores.Add(e.skill.ID, e.Initials(), e.points)
 		ctx.ScoresChanged()
-		ctx.Switch(NewHighScoreTable(e.skill, place))
+		ctx.Switch(nextEntry(ctx, e.skill, e.rest, e.player+1, place))
 	}
 	return nil
 }
@@ -201,7 +225,11 @@ func (e *HighScoreEntry) Draw(ctx *Context, dst *ebiten.Image) {
 	y := f.Large.LineHeight()
 	ui.TextCentred(dst, f.Large, "NEW HIGH SCORE", y, sc.Title, sc.Shadow)
 	y += 2 * f.Large.LineHeight()
-	ui.TextCentred(dst, f.Small, fmt.Sprintf("%s  %d", e.skill.Name, e.points), y, sc.Text, sc.Shadow)
+	label := fmt.Sprintf("%s  %d", e.skill.Name, e.points)
+	if e.player > 0 {
+		label = fmt.Sprintf("PLAYER %d  %s", e.player, label)
+	}
+	ui.TextCentred(dst, f.Small, label, y, sc.Text, sc.Shadow)
 	y += 3 * f.Small.LineHeight()
 	ui.TextCentred(dst, f.Small, "Enter your initials", y, sc.Text, sc.Shadow)
 	y += 2 * f.Small.LineHeight()
