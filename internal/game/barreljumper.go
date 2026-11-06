@@ -14,6 +14,7 @@ func init() {
 	content.Sounds = classic.Sounds
 	content.TitleTune = classic.TitleTune
 	content.DrawTitle = classic.DrawTitle
+	content.NewDemo = classic.NewDemo
 	// The reference's STARTING LEVEL setting offers levels 1 to 8.
 	content.StartLevels = 8
 }

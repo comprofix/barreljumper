@@ -508,3 +508,40 @@ func TestMenusByMouse(t *testing.T) {
 		t.Error("Resume did not return to the game")
 	}
 }
+
+// stubDemo is a demo that ends when told.
+type stubDemo struct {
+	updates int
+	over    bool
+}
+
+func (d *stubDemo) Update(*Context) error        { d.updates++; return nil }
+func (d *stubDemo) Draw(*Context, *ebiten.Image) {}
+func (d *stubDemo) Over() bool                   { return d.over }
+
+// TestAttractCycle checks a title with its own art plays the demo after
+// AttractTicks, returns to the art when a key is pressed or the demo ends,
+// and leaves for the main menu on a key while the art shows.
+func TestAttractCycle(t *testing.T) {
+	h := newHarness(t, NewTitle())
+	demo := &stubDemo{}
+	h.ctx.DrawTitle = func(*Context, *ebiten.Image) {}
+	h.ctx.NewDemo = func(*Context) Scene { demo = &stubDemo{}; return demo }
+	title := current[*Title](t, h)
+	h.ticks(AttractTicks)
+	if title.Demo() == nil {
+		t.Fatal("no demo after the title's wait")
+	}
+	h.press(ebiten.KeySpace)
+	if title.Demo() != nil || current[*Title](t, h) != title {
+		t.Fatal("a key in the demo did not return to the title art")
+	}
+	h.ticks(AttractTicks)
+	demo.over = true
+	h.ticks(1)
+	if title.Demo() != nil {
+		t.Fatal("the demo's end did not return to the title art")
+	}
+	h.press(ebiten.KeySpace)
+	current[*MainMenu](t, h)
+}
