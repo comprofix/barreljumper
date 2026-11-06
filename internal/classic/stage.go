@@ -62,6 +62,8 @@ type stage struct {
 	smash     smash
 	items     []lostItem
 	rivets    []rivet
+	elevators [6]elevator
+	springs   [4]spring
 	bonus     int
 	// updates is the shared eligible-update counter. Stage entry keeps it,
 	// so the first bonus decrease after a restart can come early, and the
@@ -107,6 +109,9 @@ func newStage(family int, rng *random, skill, level int, updates *int) *stage {
 				s.rivets = append(s.rivets, rivet{x: x, y: y})
 			}
 		}
+	case elevatorsFamily:
+		s.thrower = thrower{x: l.thrower.x, y: l.thrower.y, phase: 2, threshold: 32}
+		s.setupElevators()
 	}
 	return s
 }
@@ -169,6 +174,9 @@ func (s *stage) stageRoutines() {
 		return
 	case rivetsFamily:
 		s.removeRivets()
+	case elevatorsFamily:
+		s.moveSprings()
+		s.moveElevators()
 	}
 	if s.thrower.taunting {
 		s.taunt()
@@ -202,6 +210,8 @@ func (s *stage) completed() bool {
 			}
 		}
 		return true
+	case elevatorsFamily:
+		return 24-supportFoot-1 >= m.Y
 	default:
 		if !m.jumping && barrelsGoal.y-supportFoot >= m.Y {
 			m.Y--

@@ -36,6 +36,7 @@ var (
 	hammerHandle   = color.RGBA{150, 104, 60, 255}
 	goalColour     = color.RGBA{236, 140, 200, 255}
 	rivetColour    = color.RGBA{250, 220, 90, 255}
+	springColour   = color.RGBA{120, 220, 140, 255}
 	itemColour     = color.RGBA{200, 120, 230, 255}
 	sidebarColour  = color.RGBA{10, 12, 20, 255}
 )
@@ -90,6 +91,15 @@ func (p *Play) Draw(ctx *scene.Context, dst *ebiten.Image) {
 			if !r.removed {
 				f.rect(float32(r.x)+2, float32(r.y)-2, 6, 9, rivetColour)
 			}
+		}
+	}
+	for _, p := range s.springs {
+		if p.active {
+			h := float32(12)
+			if p.compressing {
+				h = 8
+			}
+			f.rect(float32(p.x)+2, float32(p.y)+14-h, 10, h, springColour) // X+2..X+11, Y+2..Y+13
 		}
 	}
 	for _, it := range s.items {

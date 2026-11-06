@@ -13,6 +13,9 @@ func playerSpan(m *Movement) (left, right int) {
 // every ordinary contact, including the drum.
 func (s *stage) contact() bool {
 	m := s.player
+	if s.family == elevatorsFamily && s.elevatorsKill() {
+		return true
+	}
 	if s.hammer.held && s.skill == easySkill {
 		return false
 	}
@@ -43,6 +46,11 @@ func (s *stage) contact() bool {
 			return true
 		}
 	}
+	for _, p := range s.springs {
+		if p.active && p.x+2 <= right && p.x+11 >= left && p.y+2 <= m.Y+14 && p.y+13 >= m.Y {
+			return true
+		}
+	}
 	// The thrower, on every family (DESIGN section 4, Thrower contact).
 	t := s.thrower
 	return right >= t.x+2 && left <= t.x+37 && m.Y+14 >= t.y && t.y+31 >= m.Y
@@ -57,6 +65,11 @@ func (s *stage) scanJump() {
 	}
 	for _, b := range s.barrels {
 		if b.active && b.x-8 <= m.X+16 && b.x+24 >= m.X && b.y <= m.Y+30 && b.y+10 >= m.Y+14 {
+			m.jumpCount++
+		}
+	}
+	for _, p := range s.springs {
+		if p.active && p.x-6 < m.X+16 && p.x+22 >= m.X && p.y >= m.Y+16 && p.y < m.Y+30 {
 			m.jumpCount++
 		}
 	}

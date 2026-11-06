@@ -84,7 +84,7 @@ func (p *Play) beginTurn() {
 }
 
 // builtFamilies are the families M3 has implemented so far.
-var builtFamilies = map[int]bool{barrelsFamily: true, rivetsFamily: true}
+var builtFamilies = map[int]bool{barrelsFamily: true, elevatorsFamily: true, rivetsFamily: true}
 
 func (p *Play) enterStage() {
 	for !builtFamilies[p.family()] {

@@ -155,8 +155,8 @@ func TestClassicScheduleProgression(t *testing.T) {
 		p.nextStage()
 		p.enterStage()
 	}
-	// Level 2 Elevators and level 3 Conveyor/Elevators are not built yet.
-	want := "[1:0 1:3 2:0 2:3 3:0 3:3]"
+	// Level 3 Conveyor is not built yet.
+	want := "[1:0 1:3 2:0 2:2 2:3 3:0]"
 	if fmt.Sprint(got) != want {
 		t.Errorf("screens %v, want %s", got, want)
 	}
