@@ -109,11 +109,18 @@ func (p *Play) drawScreen(f field, tick int64) {
 		drawDrum(f, s.oil, tick)
 	}
 	if p.phase == carryOff {
-		th, gx, gy, hx, hy, grabbed := p.carried()
-		drawCaptive(f, gx, gy, tick) // behind him, held
-		drawThrower(f, th)
-		drawHook(f, hx, hy)
-		drawHeart(f, cx+16, cy+1, grabbed)
+		c := p.carried()
+		if c.held {
+			drawCaptive(f, c.gx, c.gy, tick) // behind him, held
+		}
+		drawThrower(f, c.thrower)
+		if !c.held {
+			drawCaptiveStep(f, c.gx, c.gy, tick, c.stride, c.facing)
+		}
+		if c.hook {
+			drawHook(f, c.hx, c.hy)
+		}
+		drawHeart(f, cx+16, cy+1, c.held)
 	} else {
 		th := s.thrower
 		th.y += s.throwerSink()

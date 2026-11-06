@@ -223,12 +223,13 @@ func drawThrower(f field, t thrower) {
 // drawCaptive draws the site architect waiting to be rescued, in the
 // 10 x 17 box at (x, y), waving a rolled blueprint.
 func drawCaptive(f field, x, y float32, tick int64) {
-	drawCaptiveStep(f, x, y, tick, 0)
+	drawCaptiveStep(f, x, y, tick, 0, 1)
 }
 
 // drawCaptiveStep draws the captive mid-step when stride is not zero: the
-// leg stride picks is lifted forward, knee bent, the other on the ground.
-func drawCaptiveStep(f field, x, y float32, tick int64, stride int) {
+// leg stride picks is lifted forward toward facing, knee bent, the other
+// on the ground.
+func drawCaptiveStep(f field, x, y float32, tick int64, stride, facing int) {
 	jacket, jacketDark, jacketLight := captiveShirt, mix(captiveShirt, eyeColour, 0.35), mix(captiveShirt, rgb(0xffffff), 0.3)
 	skirt, skirtDark := rgb(0x2e3450), rgb(0x1e2238)
 	hairLight := mix(captiveHair, rgb(0xd08850), 0.45)
@@ -241,7 +242,7 @@ func drawCaptiveStep(f field, x, y float32, tick int64, stride int) {
 	}{{3, 2.4, skin}, {5.6, 5.2, skinShade}} {
 		lift, ahead := float32(0), float32(0)
 		if stride != 0 && (stride > 0) == (i == 1) {
-			lift, ahead = 1.3, 0.9 // she only walks to the right
+			lift, ahead = 1.3, 0.9*float32(facing)
 		}
 		f.rect(x+leg.x+ahead, y+12.5, 1.6, 3.6-lift, leg.c)
 		f.roundRect(x+leg.shoe+ahead, y+15.6-lift, 2.6, 1.4, 0.6, rgb(0x6a2030))

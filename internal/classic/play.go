@@ -255,7 +255,7 @@ func (p *Play) tick(c Controls, eligible bool) {
 	case carryOff:
 		p.timer++
 		p.stage.agePopups()
-		if p.timer == hookTicks+grabTicks {
+		if p.timer == carryHoist {
 			p.sounds |= soundWinch
 		}
 		if p.timer >= carryTicks {

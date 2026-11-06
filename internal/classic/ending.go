@@ -13,11 +13,17 @@ import (
 // (section 4, Screen endings and the height screen); the scenes are the
 // rebuild's own. Times are counter ticks from the phase's start.
 
-// Carry-off: the crane hook comes down to the thrower, he pulls the
-// captive to him, and the crane hoists them both off the top.
+// Carry-off: the thrower walks to the edge of the captive's platform and
+// she to meet him, he lifts her off, the hook comes down to his free hand,
+// and the crane hoists them off the top. On every screen but Rivets her
+// platform starts at x 110.
 const (
-	hookTicks = 60
-	grabTicks = 50
+	carryEdge    = 110
+	carryWalk    = 90 // he is at the edge
+	carryHerWalk = 60 // the last part of that, she walks to it
+	carryLift    = 30 // he lifts her
+	carryHook    = 40 // the hook comes down
+	carryHoist   = carryWalk + carryLift + carryHook
 )
 
 // Opening: the crane lowers the Barrels rows into place above the ground,
@@ -142,27 +148,70 @@ func captiveAt(family int) (float32, float32) {
 	return 126, 7 // her shoes end 17 below, on the platform's top at 24
 }
 
-// carried is the thrower, captive and hook during the carry-off.
-func (p *Play) carried() (t thrower, gx, gy, hx, hy float32, grabbed bool) {
-	t = p.stage.thrower
-	t.y += p.stage.throwerSink()
+// carryScene is the carry-off at one moment.
+type carryScene struct {
+	thrower        thrower
+	gx, gy         float32 // the captive
+	stride, facing int     // her step, as drawCaptiveStep takes them
+	held           bool    // he has her: she is drawn behind him, the heart broken
+	hx, hy         float32 // the hook, when it is down
+	hook           bool
+}
+
+// carried is the carry-off at the phase's timer: the thrower walks to the
+// edge of the captive's platform as she is made to walk to it, he lifts
+// her off it, the crane hook comes down to his free hand, and they are
+// hoisted off the top.
+func (p *Play) carried() carryScene {
+	s, tick := p.stage, p.timer
+	t := s.thrower
+	t.y += s.throwerSink()
 	t.holding, t.taunting = false, false
-	t.pose = throwerTauntB
-	cx, cy := captiveAt(p.stage.family)
-	handX, handY := float32(t.x)+37, float32(t.y)+1.5
-	tick := p.timer
-	hy = lerp(-12, handY, smooth(span(tick, 0, hookTicks)))
-	g := smooth(span(tick, hookTicks, grabTicks))
-	gx, gy = lerp(cx, float32(t.x)+38, g), lerp(cy, float32(t.y)+10, g)
-	grabbed = tick >= hookTicks+grabTicks
-	if grabbed {
-		up := span(tick, hookTicks+grabTicks, carryTicks-hookTicks-grabTicks)
-		lift := up * up * (handY + 70)
-		t.y -= int(lift)
-		gy -= lift
-		hy = handY - lift
+	t.pose = throwerReady
+	cx, cy := captiveAt(s.family)
+	edge := float32(carryEdge)
+	meet := edge - 40 // where he stands, reaching the platform's edge
+	walk := span(tick, 0, carryWalk)
+	if from := float32(t.x); from != meet {
+		t.x = int(lerp(from, meet, smooth(walk)))
+		if walk < 1 {
+			t.stride = 1 - 2*((tick/8)%2)
+		}
 	}
-	return t, gx, gy, handX, hy, grabbed
+	c := carryScene{thrower: t, gx: cx, gy: cy, facing: -1}
+	her := span(tick, carryWalk-carryHerWalk, carryHerWalk)
+	if her > 0 {
+		c.gx = lerp(cx, edge, her)
+		if her < 1 {
+			c.stride = 1 - 2*((tick/6)%2)
+		}
+	}
+	if tick >= carryWalk {
+		// He lifts her off the edge to his side.
+		c.held, c.stride = true, 0
+		t.pose = throwerPickUp
+		lift := smooth(span(tick, carryWalk, carryLift))
+		c.gx = lerp(edge, float32(t.x)+carryAtX, lift)
+		c.gy = lerp(cy, float32(t.y)+carryAtY, lift)
+	}
+	hookFrom := carryWalk + carryLift
+	if tick >= hookFrom {
+		// The hook comes down to his raised hand, then hoists them away.
+		t.pose = throwerTauntA
+		c.hook = true
+		c.hx = float32(t.x) + 3
+		handY := float32(t.y) + 1.5
+		c.hy = lerp(-12, handY, smooth(span(tick, hookFrom, carryHook)))
+		if tick >= carryHoist {
+			up := span(tick, carryHoist, carryTicks-carryHoist)
+			rise := up * up * (handY + 70)
+			t.y -= int(rise)
+			c.gy -= rise
+			c.hy = handY - rise
+		}
+	}
+	c.thrower = t
+	return c
 }
 
 // drawHook draws the crane hook on its cable from the top of the field.
@@ -333,7 +382,7 @@ func (p *Play) drawOpening(f field, tick int64) {
 		if t >= openPlaced && t < openHerPlace {
 			stride = 1 - 2*((t/6)%2)
 		}
-		drawCaptiveStep(f, gx, gy, tick, stride)
+		drawCaptiveStep(f, gx, gy, tick, stride, 1)
 	}
 	if hookY > -12 {
 		drawHook(f, handX, hookY)
