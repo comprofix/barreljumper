@@ -8,8 +8,10 @@ type Skill struct {
 	Desc string // one line shown under the menu
 }
 
-// Skills are the skill levels, easiest first.
+// Skills are the Classic reference skills, easiest first. Arcade is the
+// verified comparison baseline.
 var Skills = []Skill{
-	{ID: "easy", Name: "Easy", Desc: "A gentle start: slower and more time."},
-	{ID: "hard", Name: "Hard", Desc: "Faster, with less time on the clock."},
+	{ID: "easy", Name: "Easy", Desc: "Five lives; a held hammer guards you."},
+	{ID: "arcade", Name: "Arcade", Desc: "Three lives, as the arcade plays."},
+	{ID: "hard", Name: "Hard", Desc: "Three lives and faster throws."},
 }
