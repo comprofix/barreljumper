@@ -115,7 +115,9 @@ func (p *Play) drawScreen(f field, tick int64) {
 		drawHook(f, hx, hy)
 		drawHeart(f, cx+16, cy+1, grabbed)
 	} else {
-		drawThrower(f, s.thrower)
+		th := s.thrower
+		th.y += s.throwerSink()
+		drawThrower(f, th)
 	}
 	if p.phase == cheering {
 		drawHeart(f, cx+16, cy+1, false)

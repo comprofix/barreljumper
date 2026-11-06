@@ -101,16 +101,23 @@ func drawThrower(f field, t thrower) {
 	skinLight, skinDark := mix(bruteSkin, white, 0.25), mix(bruteSkin, black, 0.3)
 	f.ellipse(x+20, y+31.2, 17, 1.6, shadowColour)
 
-	// Legs in the overalls, creased, and steel-toed boots.
-	for _, lx := range []float32{x + 9, x + 23} {
-		f.rect(lx, y+23, 8, 7, bruteBib)
-		f.rect(lx, y+23, 2, 7, bibLight)
-		f.rect(lx+6, y+23, 2, 7, bibDark)
-		f.rect(lx+3.8, y+25, 0.4, 4, bibDark)
-		f.roundRect(lx-2, y+28.6, 12, 3.4, 1.2, boot)
-		f.roundRect(lx-2, y+28.6, 4.5, 2.4, 1.1, mix(boot, white, 0.25)) // the toe cap
-		f.rect(lx-2, y+31.2, 12, 0.8, black)                             // the sole
-		f.line(lx+3, y+29.2, lx+7, y+29.2, 0.35, mix(boot, white, 0.4))  // laces
+	// Legs in the overalls, creased, and steel-toed boots. Mid-step one
+	// leg is lifted, its knee bent.
+	for i, lx := range []float32{x + 9, x + 23} {
+		lift := float32(0)
+		if t.stride != 0 && (t.stride > 0) == (i == 1) {
+			lift = 2.4
+			lx += float32(t.stride) * 1.2
+		}
+		f.rect(lx, y+23, 8, 7-lift, bruteBib)
+		f.rect(lx, y+23, 2, 7-lift, bibLight)
+		f.rect(lx+6, y+23, 2, 7-lift, bibDark)
+		f.rect(lx+3.8, y+25, 0.4, 4-lift, bibDark)
+		by := y + 28.6 - lift
+		f.roundRect(lx-2, by, 12, 3.4, 1.2, boot)
+		f.roundRect(lx-2, by, 4.5, 2.4, 1.1, mix(boot, white, 0.25))    // the toe cap
+		f.rect(lx-2, by+2.6, 12, 0.8, black)                            // the sole
+		f.line(lx+3, by+0.6, lx+7, by+0.6, 0.35, mix(boot, white, 0.4)) // laces
 	}
 
 	// The barrel chest in a work shirt, lit from the left.

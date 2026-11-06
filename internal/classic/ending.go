@@ -145,6 +145,7 @@ func captiveAt(family int) (float32, float32) {
 // carried is the thrower, captive and hook during the carry-off.
 func (p *Play) carried() (t thrower, gx, gy, hx, hy float32, grabbed bool) {
 	t = p.stage.thrower
+	t.y += p.stage.throwerSink()
 	t.holding, t.taunting = false, false
 	t.pose = throwerTauntB
 	cx, cy := captiveAt(p.stage.family)
@@ -277,10 +278,11 @@ func (p *Play) drawOpening(f field, tick int64) {
 		hookY = lerp(-12, float32(th.y)+1.5, smooth(span(t, openHook, openHoist-openHook)))
 		gx, gy = float32(th.x)+carryAtX, float32(th.y)+carryAtY
 	}
+	top := s.layout.thrower.y + s.throwerSink()
 	if t >= openHoist {
 		up := smooth(span(t, openHoist, openTop-openHoist))
 		th.x = int(lerp(float32(openThrower.x), float32(s.layout.thrower.x), up))
-		th.y = int(lerp(float32(openThrower.y), float32(s.layout.thrower.y), up))
+		th.y = int(lerp(float32(openThrower.y), float32(top), up))
 		handX = float32(th.x) + 37
 		hookY = float32(th.y) + 1.5
 		gx, gy = float32(th.x)+carryAtX, float32(th.y)+carryAtY
@@ -290,7 +292,8 @@ func (p *Play) drawOpening(f field, tick int64) {
 		hookY = lerp(float32(th.y)+1.5, -12, smooth(span(t, openTop, 60)))
 		home := float32(s.layout.thrower.x)
 		x := lerp(home, openCarryX, smooth(span(t, openTop, openCarried-openTop)))
-		bob := -((t / 8) % 2) // a step bob
+		// He walks, lifting a leg each step; the other stays on the girder.
+		step := (t / 8) % 2
 		th.pose = throwerPickUp
 		if t >= openPlaced {
 			// Then walks back to his place.
@@ -298,8 +301,8 @@ func (p *Play) drawOpening(f field, tick int64) {
 			th.pose = throwerReady
 		}
 		th.x = int(x)
-		if t < openBack && x != home && x != openCarryX {
-			th.y += bob
+		if walking := (t < openCarried || t > openPlaced+5) && t < openBack; walking {
+			th.stride = 1 - 2*step
 		}
 		gx, gy = x+carryAtX, float32(th.y)+carryAtY
 		if t >= openCarried {
@@ -308,7 +311,7 @@ func (p *Play) drawOpening(f field, tick int64) {
 			edge := float32(barrelsGoal.left)
 			lift := smooth(span(t, openCarried, openPlaced-openCarried))
 			gx = lerp(openCarryX+carryAtX, edge, lift)
-			gy = lerp(float32(s.layout.thrower.y)+carryAtY, cy, lift)
+			gy = lerp(float32(top)+carryAtY, cy, lift)
 			if t >= openPlaced {
 				gx = lerp(edge, cx, span(t, openPlaced, openHerPlace-openPlaced))
 				gy = cy - float32((t/6)%2)*0.6*float32(1-span(t, openHerPlace, 1))
@@ -436,6 +439,7 @@ func (p *Play) drawRivetsEnd(f field, tick int64) {
 	drawCaptive(f, cx, cy+lower, tick)
 	// The thrower beats his chest, falls with his floor and lands stunned.
 	th := s.thrower
+	th.y += s.throwerSink()
 	th.holding, th.taunting = false, false
 	th.pose = throwerTauntA + (t/14)%2
 	rest := float32(162 - 32)

@@ -18,6 +18,24 @@ type thrower struct {
 	lastRegular               bool
 	released                  int // barrels created this stage
 	pose                      int
+	stride                    int // drawn only: the leg lifted mid-step, -1, 0 or 1
+}
+
+// throwerSink is how far below his reference position the thrower is
+// drawn, so his boots stand on the girder under him: the reference box is
+// 32 tall and the girder's top is a little below it.
+func (s *stage) throwerSink() int {
+	t := s.layout.thrower
+	feet, best := t.y+32, -1
+	for _, g := range s.layout.girders {
+		if g.left <= t.x+20 && t.x+20 < g.right && g.y >= feet && g.y-feet <= 6 && (best < 0 || g.y < best) {
+			best = g.y
+		}
+	}
+	if best < 0 {
+		return 0
+	}
+	return best - feet
 }
 
 func newThrower(at point, level, skill int) thrower {
