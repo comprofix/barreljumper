@@ -100,3 +100,27 @@ func TestGameplaySounds(t *testing.T) {
 		t.Errorf("sounds %b through the death sequence", p.sounds)
 	}
 }
+
+// TestLowBonusWarning checks the warning sounds every 34 eligible updates
+// once the bonus is below 1000, and not above it.
+func TestLowBonusWarning(t *testing.T) {
+	p := toPlay(t, NewPlay(nil, skillByID(t, "arcade")))
+	count := func(bonus int) int {
+		p.stage.bonus, p.updates, p.stage.sounds = bonus, 1, 0
+		n := 0
+		for range 68 {
+			p.stage.update(Controls{}, true)
+			if p.stage.sounds&soundWarn != 0 {
+				n++
+			}
+			p.stage.sounds = 0
+		}
+		return n
+	}
+	if n := count(900); n != 2 {
+		t.Errorf("%d warnings in 68 updates at bonus 900, want 2", n)
+	}
+	if n := count(1000); n != 0 {
+		t.Errorf("%d warnings at bonus 1000", n)
+	}
+}

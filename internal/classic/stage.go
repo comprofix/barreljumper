@@ -136,6 +136,10 @@ func (s *stage) update(c Controls, eligible bool) int {
 				return stageDied
 			}
 		}
+		// The low-bonus warning (DESIGN section 4, Clock and player motion).
+		if s.bonus < lowBonus && *s.updates%lowBonusEvery == 0 {
+			s.sounds |= soundWarn
+		}
 		if s.smash.active {
 			s.updateSmash()
 		} else {
@@ -313,6 +317,12 @@ func (s *stage) agePopups() {
 	}
 	s.popups = kept
 }
+
+// Below lowBonus the warning sounds every lowBonusEvery eligible updates.
+const (
+	lowBonus      = 1000
+	lowBonusEvery = 34
+)
 
 // popupTicks is how long a score stays on screen, in counter ticks.
 const popupTicks = 60

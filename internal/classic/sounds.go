@@ -19,7 +19,7 @@ import (
 
 // sound is one gameplay event that makes a sound; a stage collects them
 // as a bit set while it updates.
-type sound uint16
+type sound uint32
 
 const (
 	soundStep sound = 1 << iota
@@ -38,6 +38,7 @@ const (
 	soundWinch  // the crane hoisting
 	soundClank  // a girder set down
 	soundRumble // the Rivets floors dropping
+	soundWarn   // the bonus is running low
 )
 
 // blip is a square voice that dies away within a tick or two.
@@ -127,6 +128,11 @@ var (
 	clankSound = &audio.Effect{Name: "girder clank", Channel: 3, Priority: 2, Part: audio.Part{
 		Voice: crack, Notes: []audio.Note{{Hz: 2000, Dur: audio.Ticks(2)}, {Hz: 700, Dur: audio.Ticks(5)}},
 	}}
+	// warnSound repeats while the bonus is below 1000: two short falling
+	// blips, quiet enough to sit under play.
+	warnSound = &audio.Effect{Name: "low bonus", Channel: 0, Priority: 1, Part: audio.Part{
+		Voice: blip(audio.Pulse25, 0.28), Notes: audio.Notes("B5:3 F5:4"),
+	}}
 	rumbleSound = &audio.Effect{Name: "floors rumble", Channel: 3, Priority: 4, Part: audio.Part{
 		Voice: audio.Voice{Wave: audio.Noise, Decay: audio.Ticks(40), Release: audio.Ticks(4), Volume: 0.7},
 		Notes: []audio.Note{{Hz: 220, Dur: audio.Ticks(20)}, {Hz: 120, Dur: audio.Ticks(30)}},
@@ -158,7 +164,7 @@ var Sounds = audio.Bank{
 	Tunes: []*audio.Tune{startJingle, clearJingle},
 	Effects: []*audio.Effect{stepSound, stepSoundB, climbSound, climbSoundB, jumpSound, landSound,
 		hammerSound, swingSound, smashSound, smashCrack, pointsSound, hitSound, spinSound, thudSound,
-		winchSound, clankSound, rumbleSound},
+		winchSound, clankSound, rumbleSound, warnSound},
 }
 
 // effects maps each event to its effects, least important first, so the
@@ -167,6 +173,7 @@ var effects = []struct {
 	event   sound
 	effects []*audio.Effect
 }{
+	{soundWarn, []*audio.Effect{warnSound}},
 	{soundStep, []*audio.Effect{stepSound}},
 	{soundStepB, []*audio.Effect{stepSoundB}},
 	{soundClimb, []*audio.Effect{climbSound}},
