@@ -24,9 +24,9 @@ const (
 	gameOverTicks    = 218 // 3.0 s
 )
 
-// Play is one Classic game. Only Barrels exists in M2, so a cleared
-// Barrels screen is entered again at the same level until M3 adds the rest
-// of the schedule (DESIGN section 4, Screen progression).
+// Play is one Classic game, following the Classic schedule (DESIGN
+// section 4, Screen progression). Families not yet built in M3 are passed
+// over until they arrive.
 type Play struct {
 	skill     config.Skill
 	skillWord int
@@ -34,9 +34,10 @@ type Play struct {
 	score     int
 	reserves  int
 	level     int
+	index     int // position in the level's schedule row
 	nextLife  int
 	updates   int
-	stage     *barrelsStage
+	stage     *stage
 	phase     int
 	timer     int
 	// The nominal PIT clock, sampled each 60 Hz frame.
@@ -78,9 +79,26 @@ func (p *Play) beginTurn() {
 	p.enterStage()
 }
 
+// builtFamilies are the families M3 has implemented so far.
+var builtFamilies = map[int]bool{barrelsFamily: true, rivetsFamily: true}
+
 func (p *Play) enterStage() {
-	p.stage = newBarrelsStage(&p.rng, p.skillWord, p.level, &p.updates)
+	for !builtFamilies[p.family()] {
+		p.nextStage()
+	}
+	p.stage = newStage(p.family(), &p.rng, p.skillWord, p.level, &p.updates)
 	p.phase, p.timer = playing, 0
+}
+
+func (p *Play) family() int { return classicSchedule[p.level%5][p.index] }
+
+// nextStage advances the schedule; the row's end starts the next level.
+func (p *Play) nextStage() {
+	p.index++
+	if p.index >= len(classicSchedule[p.level%5]) {
+		p.level++
+		p.index = 0
+	}
 }
 
 // Update implements scene.Scene.
@@ -154,6 +172,7 @@ func (p *Play) tick(c Controls, eligible bool) {
 		p.timer++
 		p.stage.agePopups()
 		if p.timer >= clearTicks {
+			p.nextStage()
 			p.enterStage()
 		}
 	case gameOver:

@@ -31,9 +31,10 @@ func barrelsGirders() []girder {
 	return surfaces
 }
 
-// supports reports whether the active foot is within this girder's contact band.
+// supports reports whether the active foot is within this girder's contact
+// band. A zero-width support, such as a removed rivet, supports nothing.
 func (g girder) supports(playerX, footY int) bool {
-	return g.left < playerX+13 && playerX+5 <= g.right &&
+	return g.right > g.left && g.left < playerX+13 && playerX+5 <= g.right &&
 		g.y <= footY && footY <= g.y+2
 }
 

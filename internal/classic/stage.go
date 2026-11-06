@@ -18,29 +18,54 @@ const (
 	stageCleared
 )
 
+// tauntPeriod is how often, in shared updates, the thrower taunts on every
+// family except Barrels.
+const tauntPeriod = 200
+
 // popup is a score shown briefly where it was earned. It is drawn only.
 type popup struct {
 	points, x, y, age int
 }
 
-// barrelsStage holds the rules of one Classic Barrels attempt. It knows
-// nothing of drawing, sound or the frame rate.
-type barrelsStage struct {
+// lostItem is a collectable on the screens that have them.
+type lostItem struct {
+	active bool
+	x, y   int
+	value  int
+}
+
+// rivet is one of the eight removable Rivets supports. Its support is the
+// matching girder among the last eight records.
+type rivet struct {
+	x, y    int
+	removed bool
+	facing  int // the player's facing when it was removed
+}
+
+// stage holds the rules of one Classic screen attempt. It knows nothing
+// of drawing, sound or the frame rate.
+type stage struct {
 	rng       *random
+	family    int
 	skill     int
 	level     int // zero-based
+	layout    layout
 	player    *Movement
 	girders   []girder
+	ladders   []ladder
 	barrels   [16]barrel
 	thrower   thrower
 	oil       oilDrum
 	fireballs [8]fireball
-	pickups   [2]hammerPickup
+	pickups   []hammerPickup
 	hammer    heldHammer
 	smash     smash
+	items     []lostItem
+	rivets    []rivet
 	bonus     int
 	// updates is the shared eligible-update counter. Stage entry keeps it,
-	// so the first bonus decrease after a restart can come early.
+	// so the first bonus decrease after a restart can come early, and the
+	// periodic taunts and spawns keep their phase across screens.
 	updates *int
 	earned  int // points earned this attempt, collected by the session
 	popups  []popup
@@ -50,22 +75,45 @@ func stageBonus(level int) int {
 	return min(5000+1000*level, 8000)
 }
 
-func newBarrelsStage(rng *random, skill, level int, updates *int) *barrelsStage {
-	s := &barrelsStage{
-		rng: rng, skill: skill, level: level, updates: updates,
-		player:  NewMovement(),
-		girders: barrelsGirders(),
-		thrower: newThrower(level, skill),
-		oil:     oilDrum{x: 18, y: 164},
-		pickups: [2]hammerPickup{{true, 230, 152}, {true, 18, 47}},
+// itemValue is the lost item award for a zero-based level.
+func itemValue(level int) int {
+	return [...]int{300, 500, 800}[min(level, 2)]
+}
+
+func newStage(family int, rng *random, skill, level int, updates *int) *stage {
+	l := newLayout(family)
+	s := &stage{
+		rng: rng, family: family, skill: skill, level: level, updates: updates,
+		layout:  l,
+		player:  newMovement(&l),
+		girders: l.girders,
+		ladders: l.ladders,
+		oil:     l.oil,
 		bonus:   stageBonus(level),
+	}
+	for _, h := range l.hammers {
+		s.pickups = append(s.pickups, hammerPickup{true, h.x, h.y})
+	}
+	for _, it := range l.items {
+		s.items = append(s.items, lostItem{true, it.x, it.y, itemValue(level)})
+	}
+	switch family {
+	case barrelsFamily:
+		s.thrower = newThrower(l.thrower, level, skill)
+	case rivetsFamily:
+		s.thrower = thrower{x: l.thrower.x, y: l.thrower.y, phase: 2, threshold: 32}
+		for _, x := range []int{60, 190} {
+			for _, y := range rivetRows {
+				s.rivets = append(s.rivets, rivet{x: x, y: y})
+			}
+		}
 	}
 	return s
 }
 
 // update runs one reference counter tick in the gameplay loop order of
 // DESIGN section 4. eligible is false on the ticks AUTO skips.
-func (s *barrelsStage) update(c Controls, eligible bool) int {
+func (s *stage) update(c Controls, eligible bool) int {
 	s.agePopups()
 	if eligible {
 		*s.updates++
@@ -91,16 +139,15 @@ func (s *barrelsStage) update(c Controls, eligible bool) int {
 			}
 			s.collectHammer()
 			s.moveFireballs()
-			s.release()
-			s.moveBarrels()
+			s.stageRoutines()
 		}
 		if s.hammer.held {
 			s.swingHammer()
+		} else {
+			s.collectItems()
 		}
 	}
-	if !s.player.jumping && barrelsGoal.y-supportFoot >= s.player.Y {
-		s.player.Y--
-		s.earned += s.bonus
+	if s.completed() {
 		return stageCleared
 	}
 	if s.hammer.held {
@@ -112,7 +159,103 @@ func (s *barrelsStage) update(c Controls, eligible bool) int {
 	return stagePlaying
 }
 
-func (s *barrelsStage) award(points, x, y int) {
+// stageRoutines runs the family's own machinery, then the periodic taunt
+// and fireball spawns of the other families.
+func (s *stage) stageRoutines() {
+	switch s.family {
+	case barrelsFamily:
+		s.release()
+		s.moveBarrels()
+		return
+	case rivetsFamily:
+		s.removeRivets()
+	}
+	if s.thrower.taunting {
+		s.taunt()
+	} else if *s.updates%tauntPeriod == 0 {
+		t := &s.thrower
+		t.counter, t.taunting, t.phase, t.pose = 0, true, 1, throwerTauntA
+	}
+	if *s.updates%s.fireballPeriod() == 0 && s.family == rivetsFamily {
+		i := s.rng.bucket(4)
+		y := 176 - 32*i
+		if s.player.X < 130 {
+			s.spawnFireball(248-10*i, y, 0)
+		} else {
+			s.spawnFireball(2+10*i, y, 0)
+		}
+	}
+}
+
+// fireballPeriod is the spawn interval on Conveyor and Rivets.
+func (s *stage) fireballPeriod() int {
+	return max(100, 240-24*(s.level+s.skill))
+}
+
+func (s *stage) completed() bool {
+	m := s.player
+	switch s.family {
+	case rivetsFamily:
+		for _, r := range s.rivets {
+			if !r.removed {
+				return false
+			}
+		}
+		return true
+	default:
+		if !m.jumping && barrelsGoal.y-supportFoot >= m.Y {
+			m.Y--
+			s.earned += s.bonus
+			return true
+		}
+		return false
+	}
+}
+
+// removeRivets removes at most one rivet, or retires one removed rivet's
+// support, per update (DESIGN section 4, Rivet removal).
+func (s *stage) removeRivets() {
+	m := s.player
+	base := len(s.girders) - len(s.rivets)
+	for i := range s.rivets {
+		r := &s.rivets[i]
+		if !r.removed {
+			if r.y-16 == m.takeoffY() && r.x+1 <= m.X+8 && r.x+8 >= m.X+8 {
+				r.removed, r.facing = true, m.Facing
+				s.award(100, r.x, r.y-10)
+				return
+			}
+			continue
+		}
+		g := &s.girders[base+i]
+		if g.right == g.left {
+			continue
+		}
+		if r.x > m.X+12 || r.x+10 < m.X+6 || r.facing != m.Facing {
+			g.right = g.left
+			return
+		}
+	}
+}
+
+// collectItems collects at most one lost item while the player is neither
+// jumping nor climbing.
+func (s *stage) collectItems() {
+	m := s.player
+	if m.jumping || m.ladder != nil {
+		return
+	}
+	for i := range s.items {
+		it := &s.items[i]
+		if it.active && it.x+1 <= m.X+15 && it.x+12 > m.X+2 && it.y < m.Y+14 && it.y+10 > m.Y+2 {
+			it.active = false
+			s.award(it.value, it.x, it.y+2)
+			return
+		}
+	}
+}
+
+func (s *stage) award(points, x, y int) {
 	if points == 0 {
 		return
 	}
@@ -120,7 +263,7 @@ func (s *barrelsStage) award(points, x, y int) {
 	s.popups = append(s.popups, popup{points: points, x: x, y: y})
 }
 
-func (s *barrelsStage) agePopups() {
+func (s *stage) agePopups() {
 	kept := s.popups[:0]
 	for _, p := range s.popups {
 		if p.age++; p.age < popupTicks {

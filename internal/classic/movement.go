@@ -19,6 +19,7 @@ type Movement struct {
 	Facing                          int  // 1 right, -1 left
 	Hammer                          bool // blocks takeoff and ladders; narrows walking
 	surfaces                        []girder
+	ladders                         []ladder
 	grounded                        bool
 	ladder                          *ladder
 	movePhase                       int
@@ -33,10 +34,22 @@ type Movement struct {
 	jumpCount    int
 }
 
+// NewMovement returns a player at the Barrels start.
 func NewMovement() *Movement {
+	l := barrelsLayout()
+	return newMovement(&l)
+}
+
+func newMovement(l *layout) *Movement {
 	return &Movement{
-		X: 40, Y: 176, Facing: 1, grounded: true, surfaces: barrelsGirders(),
+		X: l.player.x, Y: l.player.y, Facing: 1, grounded: true,
+		surfaces: l.girders, ladders: l.ladders,
 	}
+}
+
+// takeoffY is the height the current jump or walking fall started from.
+func (m *Movement) takeoffY() int {
+	return m.Y - m.jumpDisplacement - m.fall.distance
 }
 
 func (m *Movement) step(c Controls, arcade bool) {
@@ -52,8 +65,8 @@ func (m *Movement) step(c Controls, arcade bool) {
 		m.fall = walkingFall{}
 	}
 	if !m.jumping && m.ladder == nil && c.Vertical != 0 && !m.Hammer {
-		for i := range barrelsLadders {
-			l := &barrelsLadders[i]
+		for i := range m.ladders {
+			l := &m.ladders[i]
 			if x, ok := l.attach(m.X, m.Y+ladderFoot, c.Vertical < 0); ok {
 				m.X, m.ladder, m.movePhase = x, l, 0
 				m.grounded = false

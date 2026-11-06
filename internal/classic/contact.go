@@ -11,7 +11,7 @@ func playerSpan(m *Movement) (left, right int) {
 
 // contact reports an ordinary fatal contact. Holding a hammer on Easy skips
 // every ordinary contact, including the drum.
-func (s *barrelsStage) contact() bool {
+func (s *stage) contact() bool {
 	m := s.player
 	if s.hammer.held && s.skill == easySkill {
 		return false
@@ -23,7 +23,7 @@ func (s *barrelsStage) contact() bool {
 	left, right := playerSpan(m)
 	top := m.Y // ordinary pose descriptors have a zero collision offset
 	o := s.oil
-	if left <= o.x+15 && right >= o.x+2 && m.Y+16 <= o.y+11 && m.Y+15 >= o.y+8 {
+	if o.present && left <= o.x+15 && right >= o.x+2 && m.Y+16 <= o.y+11 && m.Y+15 >= o.y+8 {
 		return true
 	}
 	for _, b := range s.barrels {
@@ -43,12 +43,14 @@ func (s *barrelsStage) contact() bool {
 			return true
 		}
 	}
-	return false
+	// The thrower, on every family (DESIGN section 4, Thrower contact).
+	t := s.thrower
+	return right >= t.x+2 && left <= t.x+37 && m.Y+14 >= t.y && t.y+31 >= m.Y
 }
 
 // scanJump records nearby hazards at the top of a jump (DESIGN section 4,
 // jump awards). It runs once, while the count is empty.
-func (s *barrelsStage) scanJump() {
+func (s *stage) scanJump() {
 	m := s.player
 	if m.jumpCount != 0 {
 		return

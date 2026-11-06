@@ -55,7 +55,7 @@ func (b *barrel) startBounce(height int) {
 // moveBarrels advances every active slot in slot order. A special barrel
 // that reaches the ground ends the pass for the remaining slots, as in the
 // reference.
-func (s *barrelsStage) moveBarrels() {
+func (s *stage) moveBarrels() {
 	for i := range s.barrels {
 		b := &s.barrels[i]
 		if !b.active {
@@ -80,7 +80,7 @@ func (s *barrelsStage) moveBarrels() {
 }
 
 // moveSpecialBarrel reports whether the barrel landed on the ground row.
-func (s *barrelsStage) moveSpecialBarrel(b *barrel) bool {
+func (s *stage) moveSpecialBarrel(b *barrel) bool {
 	b.cadence++
 	if b.cadence <= 2 {
 		return false
@@ -113,7 +113,7 @@ func (s *barrelsStage) moveSpecialBarrel(b *barrel) bool {
 	return true
 }
 
-func (s *barrelsStage) fallBarrel(b *barrel, first, last int) {
+func (s *stage) fallBarrel(b *barrel, first, last int) {
 	b.cadence++
 	if b.cadence <= 2 {
 		return
@@ -135,7 +135,7 @@ func (s *barrelsStage) fallBarrel(b *barrel, first, last int) {
 	}
 }
 
-func (s *barrelsStage) descendBarrel(b *barrel, first, last int) {
+func (s *stage) descendBarrel(b *barrel, first, last int) {
 	b.cadence++
 	if b.cadence <= 2 {
 		return
@@ -146,7 +146,7 @@ func (s *barrelsStage) descendBarrel(b *barrel, first, last int) {
 	if b.sub == 0 {
 		b.frame = (b.frame + 1) % 4
 	}
-	top := barrelsLadders[b.ladder].top
+	top := s.ladders[b.ladder].top
 	for _, g := range s.girders[first : last+1] {
 		if b.y > top && b.x+10 >= g.left && b.x+2 < g.left+20 &&
 			b.y+11 >= g.y && b.y+11 < g.y+2 {
@@ -158,7 +158,7 @@ func (s *barrelsStage) descendBarrel(b *barrel, first, last int) {
 	}
 }
 
-func (s *barrelsStage) rollBarrel(b *barrel, first, last int) {
+func (s *stage) rollBarrel(b *barrel, first, last int) {
 	b.cadence++
 	if b.cadence <= 1 {
 		return
@@ -214,7 +214,7 @@ func (s *barrelsStage) rollBarrel(b *barrel, first, last int) {
 	}
 	// The reference scan stops short of the top ladder, which no rolling
 	// barrel can reach.
-	for j, l := range barrelsLadders[:len(barrelsLadders)-1] {
+	for j, l := range s.ladders[:len(s.ladders)-1] {
 		if b.x+8 > l.x+1 && b.x+8 < l.x+10 && b.y == l.top-17 {
 			if s.rng.bucket(max(6, 10-s.level)) == 0 {
 				b.x, b.ladder = l.x-4, j

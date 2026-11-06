@@ -9,12 +9,10 @@ const (
 	throwerTauntB
 )
 
-// The thrower's origin on Classic Barrels.
-const throwerX, throwerY = 30, 6
-
 // thrower is the Barrels release state machine verified against the
 // reference in DESIGN section 4, Barrel release.
 type thrower struct {
+	x, y                      int
 	phase, counter, threshold int
 	taunting, holding         bool
 	lastRegular               bool
@@ -22,12 +20,12 @@ type thrower struct {
 	pose                      int
 }
 
-func newThrower(level, skill int) thrower {
+func newThrower(at point, level, skill int) thrower {
 	threshold := max(16, 50-2*level-10*skill)
-	return thrower{phase: 2, threshold: threshold, counter: threshold - 1, holding: true, pose: throwerReady}
+	return thrower{x: at.x, y: at.y, phase: 2, threshold: threshold, counter: threshold - 1, holding: true, pose: throwerReady}
 }
 
-func (s *barrelsStage) release() {
+func (s *stage) release() {
 	t := &s.thrower
 	if t.taunting {
 		s.taunt()
@@ -64,7 +62,7 @@ func (s *barrelsStage) release() {
 	}
 }
 
-func (s *barrelsStage) taunt() {
+func (s *stage) taunt() {
 	t := &s.thrower
 	t.counter++
 	if t.counter <= 24 {
@@ -83,7 +81,7 @@ func (s *barrelsStage) taunt() {
 }
 
 // createBarrel releases the held barrel into the first free slot.
-func (s *barrelsStage) createBarrel(kind int) {
+func (s *stage) createBarrel(kind int) {
 	t := &s.thrower
 	if !t.holding {
 		return
@@ -100,10 +98,10 @@ func (s *barrelsStage) createBarrel(kind int) {
 	}
 	b := barrel{active: true, kind: kind, ladder: -1, bounceMax: 0}
 	if kind == regularBarrel {
-		b.x, b.y, b.dx = throwerX+30, 29, 1
+		b.x, b.y, b.dx = t.x+30, 29, 1
 		t.lastRegular = true
 	} else {
-		b.x, b.y, b.fast = throwerX+11, throwerY+16, 1
+		b.x, b.y, b.fast = t.x+11, t.y+16, 1
 		if kind != verticalBarrel {
 			b.dx = 2
 		}

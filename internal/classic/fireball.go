@@ -13,19 +13,24 @@ type fireball struct {
 	reconsider    int
 }
 
-// oilDrum is the Barrels oil drum. Contact kills whether or not it burns.
+// oilDrum is a stage's oil drum. While present, contact kills whether or
+// not it burns.
 type oilDrum struct {
-	x, y    int
-	burning bool
+	x, y             int
+	present, burning bool
 }
 
-func (s *barrelsStage) fireballLimit() int {
-	return min(8, s.skill+(s.level+1)/2+3)
+func (s *stage) fireballLimit() int {
+	limit := s.skill + (s.level+1)/2 + 3
+	if s.family == rivetsFamily {
+		limit++
+	}
+	return min(8, limit)
 }
 
 // spawnFireball starts a fireball. A nonzero dir makes it emerge from the
 // drum in that direction after a delay.
-func (s *barrelsStage) spawnFireball(x, y, dir int) {
+func (s *stage) spawnFireball(x, y, dir int) {
 	limit := s.fireballLimit()
 	slot := -1
 	for i := 0; i < limit; i++ {
@@ -43,7 +48,10 @@ func (s *barrelsStage) spawnFireball(x, y, dir int) {
 	s.rng.bucket(4)
 	f := fireball{active: true, x: x + dir, y: y}
 	if dir != 0 {
-		f.emerging, f.dx, f.dy, f.delay = true, dir, -1, 100
+		f.emerging, f.dx, f.dy = true, dir, -1
+		if s.family == barrelsFamily {
+			f.delay = 100
+		}
 	} else if s.player.X < 160 {
 		f.dx = 1
 	} else {
@@ -52,8 +60,11 @@ func (s *barrelsStage) spawnFireball(x, y, dir int) {
 	s.fireballs[slot] = f
 }
 
-func (s *barrelsStage) moveFireballs() {
+func (s *stage) moveFireballs() {
 	period := max(120, 370-s.level)
+	if s.family != barrelsFamily {
+		period /= 2
+	}
 	for i := range s.fireballs {
 		f := &s.fireballs[i]
 		if !f.active {
@@ -76,7 +87,7 @@ func (s *barrelsStage) moveFireballs() {
 		if f.dy == 0 && f.want != 0 {
 			s.engageFireballLadder(f)
 		}
-		if f.y < 19 && f.dy != 0 {
+		if s.family == barrelsFamily && f.y < 19 && f.dy != 0 {
 			f.dy = 1
 		}
 		if f.dy != 0 {
@@ -90,7 +101,7 @@ func (s *barrelsStage) moveFireballs() {
 	}
 }
 
-func (s *barrelsStage) emergeFireball(f *fireball) {
+func (s *stage) emergeFireball(f *fireball) {
 	move := f.dy < 0
 	if f.dy > 0 {
 		f.cadence++
@@ -111,8 +122,8 @@ func (s *barrelsStage) emergeFireball(f *fireball) {
 	}
 }
 
-func (s *barrelsStage) engageFireballLadder(f *fireball) {
-	for _, l := range barrelsLadders {
+func (s *stage) engageFireballLadder(f *fireball) {
+	for _, l := range s.ladders {
 		bottom := l.top + l.height
 		if f.x+8 <= l.x+2 || f.x+8 >= l.x+8 || f.y+16 < l.top-6 || bottom < f.y+16 {
 			continue
@@ -134,7 +145,7 @@ func (s *barrelsStage) engageFireballLadder(f *fireball) {
 	}
 }
 
-func (s *barrelsStage) walkFireball(f *fireball, period int) {
+func (s *stage) walkFireball(f *fireball, period int) {
 	f.x += f.dx
 	f.reconsider++
 	switch {
@@ -169,7 +180,7 @@ func (s *barrelsStage) walkFireball(f *fireball, period int) {
 
 // supportFireball keeps a fireball on its girder and ends ladder travel.
 // Without support it turns back.
-func (s *barrelsStage) supportFireball(f *fireball) {
+func (s *stage) supportFireball(f *fireball) {
 	if f.y <= 0 || f.y >= 184 {
 		f.dy = -f.dy
 	}
@@ -177,7 +188,7 @@ func (s *barrelsStage) supportFireball(f *fireball) {
 		f.y++
 	}
 	for _, g := range s.girders {
-		if f.x+13 <= g.left || f.x+5 > g.right {
+		if g.right == g.left || f.x+13 <= g.left || f.x+5 > g.right {
 			continue
 		}
 		foot := f.y + 16

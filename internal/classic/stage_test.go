@@ -9,7 +9,7 @@ import (
 
 // replayHazards runs the hazard half of an update with an idle player and
 // no contact, as the reference probe ran it with the invincibility toggle.
-func replayHazards(s *barrelsStage) {
+func replayHazards(s *stage) {
 	*s.updates++
 	s.player.step(Controls{}, s.skill != easySkill)
 	s.collectHammer()
@@ -18,7 +18,7 @@ func replayHazards(s *barrelsStage) {
 	s.moveBarrels()
 }
 
-func activeBarrels(s *barrelsStage) string {
+func activeBarrels(s *stage) string {
 	out := ""
 	for i, b := range s.barrels {
 		if b.active {
@@ -52,7 +52,7 @@ func TestBarrelsMatchTheReferenceTrace(t *testing.T) {
 	}
 	rng := random{29039}
 	updates := 0
-	s := newBarrelsStage(&rng, arcadeSkill, 0, &updates)
+	s := newStage(barrelsFamily, &rng, arcadeSkill, 0, &updates)
 	next := 0
 	for u := 1; next < len(checks); u++ {
 		replayHazards(s)
@@ -100,7 +100,7 @@ func TestThrowerThreshold(t *testing.T) {
 	for _, c := range []struct{ level, skill, want int }{
 		{0, arcadeSkill, 40}, {0, easySkill, 50}, {0, hardSkill, 30}, {5, arcadeSkill, 30}, {20, hardSkill, 16},
 	} {
-		if got := newThrower(c.level, c.skill).threshold; got != c.want {
+		if got := newThrower(point{30, 6}, c.level, c.skill).threshold; got != c.want {
 			t.Errorf("level %d skill %d threshold %d, want %d", c.level, c.skill, got, c.want)
 		}
 	}
@@ -112,7 +112,7 @@ func TestBonusFallsAndRunsOut(t *testing.T) {
 	}
 	rng := random{1}
 	updates := 118
-	s := newBarrelsStage(&rng, arcadeSkill, 0, &updates)
+	s := newStage(barrelsFamily, &rng, arcadeSkill, 0, &updates)
 	s.update(Controls{}, true)
 	if s.bonus != 5000 {
 		t.Fatalf("bonus %d before the 120th update", s.bonus)
@@ -131,7 +131,7 @@ func TestBonusFallsAndRunsOut(t *testing.T) {
 func TestReachingTheGoalClearsTheStage(t *testing.T) {
 	rng := random{1}
 	updates := 0
-	s := newBarrelsStage(&rng, arcadeSkill, 0, &updates)
+	s := newStage(barrelsFamily, &rng, arcadeSkill, 0, &updates)
 	s.player.X, s.player.Y = 120, barrelsGoal.y-supportFoot+1
 	if got := s.update(Controls{}, false); got == stageCleared {
 		t.Fatal("cleared one pixel short of the goal")
@@ -145,7 +145,7 @@ func TestReachingTheGoalClearsTheStage(t *testing.T) {
 func TestContact(t *testing.T) {
 	rng := random{1}
 	updates := 0
-	s := newBarrelsStage(&rng, arcadeSkill, 0, &updates)
+	s := newStage(barrelsFamily, &rng, arcadeSkill, 0, &updates)
 	m := s.player // (40,176) facing right: span 42..53
 	s.barrels[0] = barrel{active: true, x: 51, y: 176, ladder: -1}
 	if !s.contact() {
@@ -190,7 +190,7 @@ func TestJumpAwards(t *testing.T) {
 func TestHammerPickupSwingAndExpiry(t *testing.T) {
 	rng := random{1}
 	updates := 0
-	s := newBarrelsStage(&rng, arcadeSkill, 0, &updates)
+	s := newStage(barrelsFamily, &rng, arcadeSkill, 0, &updates)
 	m := s.player
 	m.X, m.Y = 222, 148
 	s.collectHammer()
@@ -221,7 +221,7 @@ func TestHammerPickupSwingAndExpiry(t *testing.T) {
 func TestHammerSmash(t *testing.T) {
 	rng := random{7}
 	updates := 0
-	s := newBarrelsStage(&rng, arcadeSkill, 0, &updates)
+	s := newStage(barrelsFamily, &rng, arcadeSkill, 0, &updates)
 	s.hammer = heldHammer{held: true, x: 60, y: 170}
 	s.barrels[0] = barrel{active: true, x: 60, y: 168, ladder: -1}
 	s.fireballs[0] = fireball{active: true, x: 58, y: 166}
@@ -282,7 +282,7 @@ func TestPlayLosesALifeThenEnds(t *testing.T) {
 	}
 }
 
-func TestPlayClearRestartsBarrelsAndAwardsLives(t *testing.T) {
+func TestPlayClearAdvancesAndAwardsLives(t *testing.T) {
 	p := NewPlay(nil, skillByID(t, "arcade"))
 	p.score = 6000
 	p.stage.player.Y = barrelsGoal.y - supportFoot
@@ -293,8 +293,8 @@ func TestPlayClearRestartsBarrelsAndAwardsLives(t *testing.T) {
 	for i := 0; i < clearTicks; i++ {
 		p.tick(Controls{}, false)
 	}
-	if p.phase != playing || p.stage.player.Y != 176 {
-		t.Error("the cleared screen was not entered again")
+	if p.phase != playing || p.stage.family != rivetsFamily || p.level != 0 {
+		t.Errorf("after the level 1 Barrels clear: family %d, level %d", p.stage.family, p.level+1)
 	}
 	p.stage.earned = 39000
 	p.collect()

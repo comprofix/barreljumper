@@ -35,6 +35,8 @@ var (
 	hammerHead     = color.RGBA{214, 214, 224, 255}
 	hammerHandle   = color.RGBA{150, 104, 60, 255}
 	goalColour     = color.RGBA{236, 140, 200, 255}
+	rivetColour    = color.RGBA{250, 220, 90, 255}
+	itemColour     = color.RGBA{200, 120, 230, 255}
 	sidebarColour  = color.RGBA{10, 12, 20, 255}
 )
 
@@ -69,19 +71,36 @@ func (p *Play) Draw(ctx *scene.Context, dst *ebiten.Image) {
 	f := newField(dst)
 	f.rect(0, 0, 260, 200, skyColour)
 	s := p.stage
-	for _, l := range barrelsReservedLadders {
+	for _, l := range s.layout.reserved {
 		drawLadder(f, l, reservedColour)
 	}
-	for _, l := range barrelsLadders {
+	for _, l := range s.ladders {
 		drawLadder(f, l, ladderColour)
 	}
 	for _, g := range s.girders {
 		drawGirder(f, g)
 	}
-	drawGirder(f, girder{barrelsGoal.left, barrelsGoal.left + 50, barrelsGoal.y})
-	f.rect(126, 6, 10, 17, goalColour) // the captive waiting on the goal platform
+	switch s.family {
+	case barrelsFamily:
+		drawGirder(f, girder{barrelsGoal.left, barrelsGoal.left + 50, barrelsGoal.y})
+		f.rect(126, 6, 10, 17, goalColour) // the captive waiting on the goal platform
+	case rivetsFamily:
+		f.rect(126, 7, 10, 17, goalColour)
+		for _, r := range s.rivets {
+			if !r.removed {
+				f.rect(float32(r.x)+2, float32(r.y)-2, 6, 9, rivetColour)
+			}
+		}
+	}
+	for _, it := range s.items {
+		if it.active {
+			f.rect(float32(it.x)+1, float32(it.y), 11, 10, itemColour) // X+1..X+11, Y..Y+9
+		}
+	}
 	drawThrower(f, s.thrower)
-	drawDrum(f, s.oil, ctx.Tick)
+	if s.oil.present {
+		drawDrum(f, s.oil, ctx.Tick)
+	}
 	for _, h := range s.pickups {
 		if h.active {
 			f.rect(float32(h.x)+3, float32(h.y)+3, 2, 5, hammerHandle)
@@ -118,6 +137,9 @@ func drawGirder(f field, g girder) {
 }
 
 func drawLadder(f field, l ladder, c color.Color) {
+	if l.height == 0 {
+		return
+	}
 	x, top, h := float32(l.x), float32(l.top), float32(l.height)
 	f.rect(x, top, 1, h, c)
 	f.rect(x+7, top, 1, h, c)
@@ -127,7 +149,7 @@ func drawLadder(f field, l ladder, c color.Color) {
 }
 
 func drawThrower(f field, t thrower) {
-	x, y := float32(throwerX), float32(throwerY)
+	x, y := float32(t.x), float32(t.y)
 	f.rect(x+2, y+8, 36, 24, throwerColour) // the boss contact box is X+2..X+37, Y..Y+31
 	f.circle(x+20, y+8, 9, throwerColour)
 	f.circle(x+20, y+9, 5, throwerFace)

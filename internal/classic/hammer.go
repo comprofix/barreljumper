@@ -30,7 +30,7 @@ type smash struct {
 	points       int
 }
 
-func (s *barrelsStage) collectHammer() {
+func (s *stage) collectHammer() {
 	m := s.player
 	if m.jumpDisplacement > 16 || !m.jumping {
 		return
@@ -46,7 +46,7 @@ func (s *barrelsStage) collectHammer() {
 	}
 }
 
-func (s *barrelsStage) swingHammer() {
+func (s *stage) swingHammer() {
 	m, h := s.player, &s.hammer
 	if m.jumping && m.jumpDisplacement < -4 {
 		h.x, h.y = m.X+6, m.Y-9
@@ -86,7 +86,7 @@ func (s *barrelsStage) swingHammer() {
 	}
 }
 
-func (s *barrelsStage) dropHammer() {
+func (s *stage) dropHammer() {
 	s.hammer.held = false
 	s.player.Hammer = false
 }
@@ -98,7 +98,7 @@ func (h heldHammer) warning() bool {
 
 // hitWithHammer destroys at most one target under the hammer head,
 // fireballs before barrels.
-func (s *barrelsStage) hitWithHammer() {
+func (s *stage) hitWithHammer() {
 	h := s.hammer
 	left, top, w, ht := h.x, h.y, 12, 6
 	if h.forward {
@@ -129,13 +129,13 @@ func (s *barrelsStage) hitWithHammer() {
 	}
 }
 
-func (s *barrelsStage) startSmash(x, y int) {
+func (s *stage) startSmash(x, y int) {
 	s.smash = smash{active: true, x: x + 2, y: y + 1}
 }
 
 // updateSmash runs the destruction animation. The award is drawn on every
 // call; the last draw is paid when the animation ends.
-func (s *barrelsStage) updateSmash() {
+func (s *stage) updateSmash() {
 	k := &s.smash
 	k.points = [...]int{300, 500, 800}[s.rng.bucket(3)]
 	k.timer++
