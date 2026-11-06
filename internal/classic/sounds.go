@@ -159,9 +159,12 @@ var (
 	}}
 )
 
+// TitleTune is the title theme, for the title, menus and high scores.
+var TitleTune = themeTune
+
 // Sounds are the Classic sounds, for the sound test.
 var Sounds = audio.Bank{
-	Tunes: []*audio.Tune{startJingle, clearJingle},
+	Tunes: []*audio.Tune{themeTune, startJingle, clearJingle},
 	Effects: []*audio.Effect{stepSound, stepSoundB, climbSound, climbSoundB, jumpSound, landSound,
 		hammerSound, swingSound, smashSound, smashCrack, pointsSound, hitSound, spinSound, thudSound,
 		winchSound, clankSound, rumbleSound, warnSound},

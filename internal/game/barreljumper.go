@@ -12,6 +12,7 @@ func init() {
 	}
 	content.MaxPlayers = 2
 	content.Sounds = classic.Sounds
+	content.TitleTune = classic.TitleTune
 	// The reference's STARTING LEVEL setting offers levels 1 to 8.
 	content.StartLevels = 8
 }

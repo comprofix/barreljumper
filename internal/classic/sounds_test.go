@@ -124,3 +124,17 @@ func TestLowBonusWarning(t *testing.T) {
 		t.Errorf("%d warnings at bonus 1000", n)
 	}
 }
+
+// TestThemeBarsLineUp checks every part of the title theme is the same
+// length, so the loop stays in time.
+func TestThemeBarsLineUp(t *testing.T) {
+	want := audio.Length(themeTune.Parts[0].Notes)
+	for i, p := range themeTune.Parts {
+		if got := audio.Length(p.Notes); got != want {
+			t.Errorf("part %d is %v, want %v", i, got, want)
+		}
+	}
+	if !themeTune.Loop {
+		t.Error("the theme does not loop")
+	}
+}
