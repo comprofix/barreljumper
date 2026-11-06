@@ -136,7 +136,8 @@ func drawSidebar(f field) {
 }
 
 // drawPlayer draws the worker in the player's span, Y..Y+15: hard hat,
-// hi-vis vest, jeans and boots, walking, climbing or jumping.
+// hi-vis vest over a work shirt, jeans and boots, walking, climbing or
+// jumping. Like the other figures he is lit from the left.
 func (p *Play) drawPlayer(f field) {
 	s := p.stage
 	m := s.player
@@ -157,9 +158,9 @@ func (p *Play) drawPlayer(f field) {
 		return
 	}
 	f.ellipse(cx, y+16, 6, 1, shadowColour)
-	body := vestOrange
+	vest := vestOrange
 	if dying {
-		body = hurt
+		vest = hurt
 	}
 	climbing := m.ladder != nil && !m.grounded
 	stride := float32(0)
@@ -173,42 +174,47 @@ func (p *Play) drawPlayer(f field) {
 		// The feet change on the footstep sounds' 4-pixel steps.
 		stride = float32(footfall(m.X)&1)*2.4 - 1.2
 	}
+	at := func(dx float32) float32 { return cx + dx*facing }
+	walking := !climbing && !m.jumping && !s.hammer.held
+	if walking {
+		// The far arm swings opposite the near one, mostly behind him.
+		drawLimb(f, at(-2.4), y+6, at(-3.8-stride*0.9), y+9.6, true)
+	}
 	// Legs and boots.
 	if climbing {
-		f.rect(cx-3.5, y+10, 2.6, 4+stride, denim)
-		f.rect(cx+0.9, y+10, 2.6, 4-stride, denim)
-		f.rect(cx-3.8, y+13.5+stride, 3, 2, boot)
-		f.rect(cx+0.8, y+13.5-stride, 3, 2, boot)
+		drawLeg(f, cx-2.2, y+10.4, 3.6+stride, false)
+		drawLeg(f, cx+2.2, y+10.4, 3.6-stride, false)
+		drawBoot(f, cx-2.2, y+13.6+stride, 0)
+		drawBoot(f, cx+2.2, y+13.6-stride, 0)
 	} else {
-		back, front := cx-1.3-stride*facing, cx-1.3+stride*facing
-		f.rect(back, y+10, 2.6, 4.5, denimDark)
-		f.rect(front, y+10, 2.6, 4.5, denim)
-		f.rect(back-0.3+facing*0.6, y+14, 3.2, 1.6, boot)
-		f.rect(front-0.3+facing*0.6, y+14, 3.2, 1.6, boot)
+		back, front := cx-stride*facing, cx+stride*facing
+		drawLeg(f, back, y+10.4, 4, true)
+		drawBoot(f, back+0.3*facing, y+14, facing)
+		drawLeg(f, front, y+10.4, 4, false)
+		drawBoot(f, front+0.3*facing, y+14, facing)
 	}
-	// Torso in the vest, reflective stripes across it.
-	f.roundRect(cx-4, y+5, 8, 6, 1.5, body)
-	f.rect(cx-4, y+7.5, 8, 0.9, vestStripe)
-	f.rect(cx-4, y+9.5, 8, 0.9, vestStripe)
-	// Arms: up the rails when climbing, swinging when walking.
-	switch {
-	case climbing:
-		f.line(cx-3.5, y+6, cx-4, y+1.5+stride, 1.6, skin)
-		f.line(cx+3.5, y+6, cx+4, y+1.5-stride, 1.6, skin)
-	case m.jumping:
-		f.line(cx-3.5, y+6, cx-5.5, y+3, 1.6, skin)
-		f.line(cx+3.5, y+6, cx+5.5, y+3, 1.6, skin)
-	case !s.hammer.held:
-		f.line(cx+3.5*facing, y+6, cx+(3.5+stride*0.8)*facing, y+10, 1.6, skin)
-	}
-	// Head and hard hat.
-	f.circle(cx, y+3.2, 2.6, skin)
+	// A belt with a brass buckle.
+	f.rect(cx-3.9, y+10, 7.8, 0.9, beltColour)
 	if !climbing {
-		f.rect(cx+1.2*facing-0.5, y+2.6, 1, 1, eyeColour)
-		f.rect(cx-2.3*facing-0.4, y+3.2, 0.8, 1.6, skinShade)
+		f.rect(at(1.6)-0.5, y+10.05, 1, 0.8, boltHead)
 	}
-	f.ellipse(cx, y+1.4, 3.2, 2, hatYellow)
-	f.rect(cx-3.2+facing*0.8, y+1.6, 6.4, 0.9, hatShade)
+	drawVest(f, cx, y, at, vest, !climbing)
+	// Arms out when jumping, swinging when walking.
+	switch {
+	case m.jumping:
+		drawLimb(f, cx-3.3, y+6, cx-5.8, y+2.8, false)
+		drawLimb(f, cx+3.3, y+6, cx+5.8, y+2.8, false)
+	case walking:
+		drawLimb(f, at(3), y+6, at(4.2+stride*0.9), y+9.6, false)
+	case s.hammer.held:
+		drawLimb(f, at(-0.6), y+6.2, cx+2*facing, y+7, false)
+	}
+	drawHead(f, cx, y, at, climbing)
+	if climbing {
+		// Up the rails, hands over his hat.
+		drawLimb(f, cx-3.2, y+6, cx-4, y+1.5+stride, false)
+		drawLimb(f, cx+3.2, y+6, cx+4, y+1.5-stride, false)
+	}
 	if s.hammer.held && p.phase == playing {
 		h := s.hammer
 		hw, hh := float32(12), float32(6)
@@ -220,8 +226,139 @@ func (p *Play) drawPlayer(f field) {
 			}
 		}
 		drawHammer(f, hx, float32(h.y), hw, hh, cx+2*facing, y+7, h.forward, h.warning())
-		f.circle(cx+2*facing, y+7, 1.2, skin)
+		drawFist(f, cx+2*facing, y+7)
 	}
+}
+
+// Worker colours that only the standing worker uses.
+var (
+	workShirt  = rgb(0x34507a)
+	hairColour = rgb(0x5a3a22)
+	beltColour = rgb(0x3a2614)
+	white      = rgb(0xffffff)
+)
+
+// drawLimb draws an arm from the shoulder: a rolled sleeve, the forearm
+// and the hand. A far arm is drawn darker.
+func drawLimb(f field, sx, sy, ex, ey float32, far bool) {
+	shirt, arm := workShirt, skin
+	if far {
+		shirt, arm = mix(workShirt, eyeColour, 0.35), mix(skin, eyeColour, 0.3)
+	}
+	mx, my := sx+(ex-sx)*0.42, sy+(ey-sy)*0.42
+	f.line(mx, my, ex, ey, 1.45, arm)
+	f.line(sx, sy, mx, my, 2, shirt)
+	f.circle(mx, my, 1, mix(shirt, white, 0.15)) // the rolled cuff
+	f.circle(ex, ey, 0.95, arm)
+	f.circle(ex+0.3, ey+0.3, 0.45, mix(arm, eyeColour, 0.2))
+}
+
+// drawFist draws the hand closed on the hammer handle.
+func drawFist(f field, x, y float32) {
+	f.circle(x, y, 1.25, skin)
+	f.circle(x+0.35, y+0.4, 0.6, skinShade)
+	f.circle(x-0.4, y-0.4, 0.4, mix(skin, white, 0.35))
+}
+
+// drawLeg draws a jeans leg hanging from top, shaded on its right with a
+// turned-up cuff. A far leg is drawn darker.
+func drawLeg(f field, lx, top, length float32, far bool) {
+	base := denim
+	if far {
+		base = denimDark
+	}
+	f.rect(lx-1.3, top, 2.6, length, base)
+	f.rect(lx+0.6, top, 0.7, length, mix(base, eyeColour, 0.3))
+	f.rect(lx-1.3, top, 0.5, length, mix(base, white, 0.18))
+	f.rect(lx-1.3, top+length*0.45, 2.6, 0.25, mix(base, eyeColour, 0.2)) // the knee
+	f.rect(lx-1.4, top+length-0.8, 2.8, 0.8, mix(base, white, 0.12))      // the cuff
+}
+
+// drawBoot draws a work boot with its toe toward facing, or from behind
+// when facing is zero.
+func drawBoot(f field, bx, by, facing float32) {
+	sole := mix(boot, eyeColour, 0.6)
+	if facing == 0 {
+		f.roundRect(bx-1.5, by, 3, 2, 0.7, boot)
+		f.rect(bx-1.5, by+1.6, 3, 0.45, sole)
+		f.rect(bx-0.9, by+0.3, 0.6, 0.9, mix(boot, white, 0.18))
+		return
+	}
+	f.roundRect(bx-1.7, by, 3.4, 1.8, 0.7, boot)
+	f.circle(bx+1.1*facing, by+1, 0.85, mix(boot, white, 0.12)) // the steel toe
+	f.rect(bx-1.8, by+1.4, 3.6, 0.45, sole)
+	f.rect(bx-1.1, by+0.25, 1.4, 0.35, mix(boot, white, 0.25)) // laces
+}
+
+// drawVest draws the hi-vis vest over the work shirt, lit from the left,
+// with reflective bands; the front shows the collar and an ID badge.
+func drawVest(f field, cx, y float32, at func(float32) float32, vest color.RGBA, front bool) {
+	dark, light := mix(vest, eyeColour, 0.3), mix(vest, white, 0.3)
+	f.roundRect(cx-4, y+5, 8, 5.3, 1.5, vest)
+	f.rect(cx+2.5, y+5.7, 1.5, 4.4, dark)
+	f.rect(cx-4, y+5.7, 0.7, 4, light)
+	f.rect(cx-3.6, y+9.9, 7.2, 0.4, dark)
+	if front {
+		// The shirt collar in the vest's open front.
+		nx := at(0.9)
+		f.poly(workShirt, nx-1.4, y+5, nx+1.4, y+5, nx, y+7)
+		f.poly(mix(workShirt, white, 0.25), nx-1.4, y+5, nx-0.3, y+5, nx-0.5, y+6.1)
+	}
+	// Bands over the shoulders and around the body.
+	band := func(bx, by, bw, bh float32) {
+		f.rect(bx, by, bw, bh, vestStripe)
+		f.rect(bx, by+bh-0.25, bw, 0.25, mix(vestStripe, eyeColour, 0.35))
+	}
+	band(cx-2.6, y+5.1, 0.8, 2.3)
+	band(cx+1.8, y+5.1, 0.8, 2.3)
+	band(cx-4, y+7.4, 8, 0.85)
+	band(cx-4, y+9, 8, 0.75)
+	f.rect(cx-3.3, y+7.5, 1.2, 0.25, white) // a glint
+	if front {
+		bx := at(-1.6) - 0.55
+		f.rect(bx, y+8.25, 1.1, 0.75, rgb(0xe8eef4)) // the ID badge
+		f.rect(bx+0.15, y+8.4, 0.5, 0.3, blueLight)
+	}
+}
+
+// drawHead draws the head and hard hat: in profile toward facing, or from
+// behind when climbing.
+func drawHead(f field, cx, y float32, at func(float32) float32, back bool) {
+	f.rect(cx-1, y+4.6, 2, 1, skinShade) // the neck
+	if back {
+		f.circle(cx-2.5, y+3.4, 0.7, skinShade)
+		f.circle(cx+2.5, y+3.4, 0.7, skinShade)
+		f.circle(cx, y+3.2, 2.6, skin)
+		f.ellipse(cx, y+3.4, 2.5, 1.9, hairColour)
+		f.ellipse(cx-0.8, y+2.9, 0.9, 0.6, mix(hairColour, white, 0.15))
+	} else {
+		f.circle(cx, y+3.2, 2.6, skinShade)
+		f.ellipse(at(0.4), y+3.2, 2.3, 2.5, skin)
+		f.ellipse(at(1.2), y+3.8, 0.8, 0.6, mix(skin, rgb(0xe07060), 0.25)) // cheek
+		f.ellipse(at(-1.7), y+3.1, 1, 1.4, hairColour)                      // sideburn
+		f.circle(at(-0.9), y+3.6, 0.75, skinShade)                          // ear
+		f.circle(at(-0.9), y+3.6, 0.4, skin)
+		f.ellipse(at(1.3), y+3, 0.55, 0.62, white) // eye
+		f.circle(at(1.5), y+3.05, 0.33, eyeColour)
+		f.line(at(0.7), y+2.2, at(1.9), y+2.35, 0.35, hairColour) // brow
+		f.circle(at(2.45), y+3.6, 0.62, skin)                     // nose
+		f.circle(at(2.35), y+3.95, 0.35, skinShade)
+		f.line(at(1.4), y+4.65, at(2.1), y+4.55, 0.3, mix(skinShade, eyeColour, 0.35)) // mouth
+	}
+	// The hard hat: a dome shaded underneath, a ridge, a shine and a brim
+	// peaked toward facing.
+	f.ellipse(cx, y+1.4, 3.2, 2, hatShade)
+	f.ellipse(cx-0.3, y+1.1, 2.9, 1.7, hatYellow)
+	f.rect(cx-0.4, y-0.55, 0.8, 2.4, mix(hatYellow, white, 0.25))
+	f.rect(cx+0.2, y-0.4, 0.2, 2.2, hatShade)
+	f.ellipse(cx-1.5, y+0.4, 1, 0.45, mix(hatYellow, white, 0.6))
+	l, r := cx-3.4, cx+3.4
+	if !back {
+		l, r = min(at(-2.8), at(4.2)), max(at(-2.8), at(4.2))
+	}
+	f.roundRect(l, y+1.7, r-l, 0.95, 0.45, hatYellow)
+	f.rect(l+0.3, y+2.3, r-l-0.6, 0.35, hatShade)
+	f.rect(l+0.4, y+1.75, r-l-0.8, 0.2, mix(hatYellow, white, 0.4))
 }
 
 func (p *Play) drawText(ctx *scene.Context, f field) {
