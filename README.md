@@ -8,6 +8,16 @@ Barrel Jumper is an independent rebuild of the Classic mode of CHAMP Kong
 All of its code, artwork, sound and music are new. It is not affiliated with
 or endorsed by the authors of CHAMP Kong.
 
+## Download
+
+Builds for Windows and Linux (64-bit) are on the
+[Releases](https://github.com/comprofix/barreljumper/releases) page, with
+`SHA256SUMS.txt` to check them against.
+
+- **Windows:** unzip `barreljumper-vX.Y.Z-windows-amd64.zip` and run `barreljumper.exe`.
+- **Linux:** extract `barreljumper-vX.Y.Z-linux-amd64.tar.gz` and run `./barreljumper`.
+  It needs OpenGL, X11 and ALSA, which desktop systems already have.
+
 ## How to play
 
 Each level is a row of screens. Clear one to move on to the next.
