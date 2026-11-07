@@ -91,7 +91,6 @@ var (
 	itemLight  = color.RGBA{255, 255, 255, 110}
 
 	sidebarColour = rgb(0x12141f)
-	sidebarEdge   = rgb(0x2e3248)
 	hazardYellow  = rgb(0xf0c020)
 	hazardBlack   = rgb(0x1a1a1a)
 )

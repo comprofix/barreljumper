@@ -51,7 +51,7 @@ func (p *Play) Draw(ctx *scene.Context, dst *ebiten.Image) {
 	default:
 		p.drawScreen(f, ctx.Tick)
 	}
-	drawSidebar(f)
+	p.drawSidebar(ctx, f)
 	p.drawText(ctx, f)
 }
 
@@ -152,16 +152,6 @@ func (p *Play) drawScreen(f field, tick int64) {
 	p.drawPlayer(f)
 	if s.smash.active {
 		drawSmash(f, s.smash)
-	}
-}
-
-// drawSidebar frames the score panel right of the field.
-func drawSidebar(f field) {
-	f.rect(260, 0, 60, 200, sidebarColour)
-	f.rect(260, 0, 1, 200, sidebarEdge)
-	for i := float32(0); i < 60; i += 6 {
-		f.poly(hazardYellow, 261+i, 196, 264+i, 196, 267+i, 200, 264+i, 200)
-		f.poly(hazardYellow, 261+i, 0, 264+i, 0, 267+i, 4, 264+i, 4)
 	}
 }
 
@@ -399,21 +389,6 @@ func (p *Play) drawText(ctx *scene.Context, f field) {
 	at := func(x, y float32) (int, int) {
 		return int(f.left + x*f.scale), int(f.top + y*f.scale)
 	}
-	line := func(row int, label, value string) {
-		x, y := at(266, float32(10+row*30))
-		font.Draw(f.dst, label, x, y, sc.Dim)
-		font.Draw(f.dst, value, x, y+font.LineHeight()+2, sc.Text)
-	}
-	score := "SCORE"
-	if len(p.players) > 1 {
-		score = fmt.Sprint("PLAYER ", p.current+1)
-		other := 1 - p.current
-		line(5, fmt.Sprint("PLAYER ", other+1), fmt.Sprint(p.players[other].score))
-	}
-	line(0, score, fmt.Sprint(p.score))
-	line(1, "BONUS", fmt.Sprint(p.stage.bonus))
-	line(2, "LIVES", fmt.Sprint(p.reserves))
-	line(3, "LEVEL", fmt.Sprint(p.level+1))
 	for _, pu := range p.stage.popups {
 		x, y := at(float32(pu.x), float32(pu.y-pu.age/6))
 		font.Draw(f.dst, fmt.Sprint(pu.points), x, y, sc.Highlight)

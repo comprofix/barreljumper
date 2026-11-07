@@ -187,6 +187,6 @@ func (d *Demo) Draw(ctx *scene.Context, dst *ebiten.Image) {
 			large = small
 		}
 		const word = "DEMO"
-		large.DrawShadowed(dst, word, int(f.left+290*f.scale)-large.Width(word)/2, int(f.top+150*f.scale), sc.Title, sc.Shadow)
+		large.DrawShadowed(dst, word, int(f.left+290*f.scale)-large.Width(word)/2, int(f.top+170*f.scale), sc.Title, sc.Shadow)
 	}
 }

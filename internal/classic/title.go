@@ -102,47 +102,57 @@ const titleWorkerX = 112
 // titleHop is how high the title's worker is off the girder with the
 // barrel at bx: he takes off as it closes in and lands once it is past.
 func titleHop(bx int) float32 {
-	const before, after = 26, 26 // the barrel's centre from his, in pixels
-	d := float32(bx + 7 - titleWorkerX)
-	if d > before || d < -after {
+	return hopLift(float32(bx+7-titleWorkerX), 26, 16)
+}
+
+// hopLift is a hop's height with the barrel's centre d from the worker's:
+// he takes off when it is reach away, peaks at height over it and lands
+// once it is reach past.
+func hopLift(d, reach, height float32) float32 {
+	if d > reach || d < -reach {
 		return 0
 	}
-	t := (before - d) / (before + after)
-	return 16 * sin(t*3.1416)
+	return height * sin((reach-d)/(2*reach)*3.1416)
 }
 
 // drawLogo draws word in steel blocks centred across the title, with its
 // top at y. A glint runs across the blocks every few seconds.
 func drawLogo(f field, word string, y float32, tick int64) {
+	drawLogoAt(f, word, titleWidth/2, y, titleBlock, tick)
+}
+
+// drawLogoAt draws word in steel blocks of size b, centred on cx with its
+// top at y. The glint keeps the title's timing at any size.
+func drawLogoAt(f field, word string, cx, y, b float32, tick int64) {
 	const gap = 1.5 // between letters, in blocks
 	n := float32(len(word))
-	width := (n*5 + (n-1)*gap) * titleBlock
-	left := (titleWidth - width) / 2
-	glint := float32(tick%300)*1.2 - 40
+	width := (n*5 + (n-1)*gap) * b
+	left := cx - width/2
+	k := b / titleBlock
+	glint := (float32(tick%300)*1.2 - 40) * k
 	for i, r := range word {
 		g := titleGlyphs[r]
-		lx := left + float32(i)*(5+gap)*titleBlock
+		lx := left + float32(i)*(5+gap)*b
 		for row := range 7 {
 			for col := range 5 {
 				if g[row][col] != '#' {
 					continue
 				}
-				x, by := lx+float32(col)*titleBlock, y+float32(row)*titleBlock
-				drawLogoBlock(f, x, by, clamp01(1-abs32(x-left-glint)/14))
+				x, by := lx+float32(col)*b, y+float32(row)*b
+				drawLogoBlock(f, x, by, b, clamp01(1-abs32(x-left-glint)/(14*k)))
 			}
 		}
 	}
 }
 
-// drawLogoBlock draws one bevelled steel block with a bolt, lit by shine
-// from 0 to 1.
-func drawLogoBlock(f field, x, y, shine float32) {
-	b := float32(titleBlock)
-	f.rect(x+0.8, y+0.8, b, b, rgb(0x0c0c14))
+// drawLogoBlock draws one bevelled steel block of size b with a bolt, lit
+// by shine from 0 to 1.
+func drawLogoBlock(f field, x, y, b, shine float32) {
+	f.rect(x+0.2*b, y+0.2*b, b, b, rgb(0x0c0c14))
 	f.rect(x, y, b, b, steelEdge)
-	f.rect(x, y, b-0.4, b-0.4, mix(steel, rgb(0xfff0d0), shine*0.6))
-	f.rect(x, y, b-0.4, 0.6, mix(steelLight, rgb(0xffffff), shine))
-	f.rect(x, y, 0.6, b-0.4, mix(steelLight, rgb(0xffffff), shine*0.6))
-	f.rect(x+0.4, y+b-1, b-0.8, 0.6, steelDark)
-	f.circle(x+b/2, y+b/2, 0.45, boltColour)
+	f.rect(x, y, b-0.1*b, b-0.1*b, mix(steel, rgb(0xfff0d0), shine*0.6))
+	f.rect(x, y, b-0.1*b, 0.15*b, mix(steelLight, rgb(0xffffff), shine))
+	f.rect(x, y, 0.15*b, b-0.1*b, mix(steelLight, rgb(0xffffff), shine*0.6))
+	f.rect(x+0.1*b, y+b-0.25*b, b-0.2*b, 0.15*b, steelDark)
+	f.circle(x+b/2, y+b/2, 0.1125*b, boltColour)
 }
