@@ -3,9 +3,8 @@
 # holding both with that version's notes from CHANGELOG.md. The builds run
 # on Ubuntu; the Windows build needs no cgo, so it is cross-built.
 #
-# The skeleton's template: copied to .github/workflows/ when a game sets up
-# CI/CD (AGENTS.md §5). The tag must be annotated, `<Title> vX.Y.Z`, as its
-# message is the release's title.
+# The tag must be annotated, `Barrel Jumper vX.Y.Z`, as its message is
+# the release's title. Release notes come from the tagged CHANGELOG.md.
 name: Release
 
 on:
@@ -95,7 +94,7 @@ jobs:
           name="barreljumper-$GITHUB_REF_NAME-${{ matrix.goos }}-amd64"
           mkdir dist
           mv stage "$name"
-          cp README.md LICENSE "$name/"
+          cp README.md LICENSE CHANGELOG.md "$name/"
           if [ "${{ matrix.goos }}" = windows ]; then
             zip -r "dist/$name.zip" "$name"
           else
