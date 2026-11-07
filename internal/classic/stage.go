@@ -176,6 +176,9 @@ func (s *stage) update(c Controls, eligible bool) int {
 		}
 	}
 	if s.completed() {
+		// Every family's clear credits the remaining bonus (DESIGN section 4,
+		// Screen progression and completion; M5 natural clears).
+		s.earned += s.bonus
 		return stageCleared
 	}
 	if s.hammer.held {
@@ -249,7 +252,6 @@ func (s *stage) completed() bool {
 	default:
 		if !m.jumping && barrelsGoal.y-supportFoot >= m.Y {
 			m.Y--
-			s.earned += s.bonus
 			return true
 		}
 		return false

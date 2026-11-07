@@ -142,6 +142,36 @@ func TestReachingTheGoalClearsTheStage(t *testing.T) {
 	}
 }
 
+// TestEveryClearCreditsTheBonus checks that each family's clear adds the
+// remaining bonus once (DESIGN section 4, M5 natural clears).
+func TestEveryClearCreditsTheBonus(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		family int
+		finish func(s *stage)
+	}{
+		{"barrels", barrelsFamily, func(s *stage) { s.player.X, s.player.Y = 120, barrelsGoal.y-supportFoot }},
+		{"rivets", rivetsFamily, func(s *stage) {
+			for i := range s.rivets {
+				s.rivets[i].removed = true
+			}
+		}},
+		{"elevators", elevatorsFamily, func(s *stage) { s.player.Y = 24 - supportFoot - 1 }},
+		{"conveyor", conveyorFamily, func(s *stage) { s.player.Y = 42 - supportFoot - 1 }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rng := random{1}
+			updates := 0
+			s := newStage(tc.family, &rng, arcadeSkill, 0, &updates)
+			s.bonus = 3000
+			tc.finish(s)
+			if got := s.update(Controls{}, false); got != stageCleared || s.earned != 3000 {
+				t.Errorf("outcome %d, earned %d; want a clear crediting 3000", got, s.earned)
+			}
+		})
+	}
+}
+
 func TestContact(t *testing.T) {
 	rng := random{1}
 	updates := 0
